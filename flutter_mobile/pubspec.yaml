@@ -1,0 +1,46 @@
+name: drive_net
+description: "Cloud USB - Mobile Cloud Storage App"
+publish_to: 'none'
+version: 1.1.0+1
+
+environment:
+  sdk: ^3.1.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  http: ^1.2.0
+  shared_preferences: ^2.5.4
+  google_sign_in: ^6.2.1
+  web_socket_channel: ^3.0.1
+  file_picker: ^10.3.10
+  path_provider: ^2.1.5
+  share_plus: ^12.0.1
+  url_launcher: ^6.3.2
+  open_filex: ^4.7.0
+  # New packages for Google Drive feature parity
+  video_player: ^2.8.0
+  photo_view: ^0.15.0
+  audioplayers: ^6.0.0
+  image_picker: ^1.0.7
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon.png"
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: "assets/icon.png"
+    background_color: "#18181b"
+    theme_color: "#18181b"

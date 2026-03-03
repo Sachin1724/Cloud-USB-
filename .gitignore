@@ -1,0 +1,56 @@
+# Global binary and build ignores
+**/build/
+**/dist/
+**/.dart_tool/
+**/.pub/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/*.exe
+**/*.apk
+**/*.aar
+**/*.jar
+**/*.dll
+**/*.so
+**/*.dylib
+**/*.pdb
+**/*.msi
+**/*.zip
+**/*.tar.gz
+**/release_bin/
+**/release/
+**/debug/
+**/profile/
+
+# Dependencies
+node_modules/
+.npm/
+
+# Environment secrets (CRITICAL)
+.env
+.env.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project specific
+backend/dist/
+frontend/dist/
+frontend/build/
+windows_agent_ui/release_bin/
+windows_agent_ui/setup.iss
+DriveNet_Setup_*.exe
+bin/
+releases/
