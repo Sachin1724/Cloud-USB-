@@ -269,34 +269,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      TextField(
-                        controller: _dashboardController,
-                        style: const TextStyle(color: Colors.white, fontSize: 11, fontFamily: 'Courier'),
-                        decoration: InputDecoration(
-                          labelText: 'VERCEL DASHBOARD URL',
-                          labelStyle: TextStyle(color: Colors.grey[500], fontSize: 10, letterSpacing: 2.0),
-                          enabledBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
-                          focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFFFF4655))),
-                          filled: true,
-                          fillColor: const Color(0xFF0D0D14),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _brokerController,
-                        style: const TextStyle(color: Colors.white, fontSize: 11, fontFamily: 'Courier'),
-                        decoration: InputDecoration(
-                          labelText: 'RENDER BROKER API URL',
-                          labelStyle: TextStyle(color: Colors.grey[500], fontSize: 10, letterSpacing: 2.0),
-                          enabledBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
-                          focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFFFF4655))),
-                          filled: true,
-                          fillColor: const Color(0xFF0D0D14),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
 
                       // Google Sign-In Button
                       SizedBox(
