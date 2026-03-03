@@ -24,7 +24,7 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
   bool _isOnline = false;
   bool _goingOnline = false;
   String _userEmail = '';
-  String _brokerUrl = 'https://drivenet-broker.onrender.com';
+  String _brokerUrl = 'https://cloud-usb.onrender.com';
 
   // Live tunnel status
   bool get _isConnected => TunnelClient.isConnected;
@@ -68,7 +68,7 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
     final prefs = await SharedPreferences.getInstance();
     final email = prefs.getString('drivenet_user') ?? '';
     final savedDrive = prefs.getString('selected_drive');
-    final brokerUrl = prefs.getString('broker_url') ?? 'https://drivenet-broker.onrender.com';
+    final brokerUrl = prefs.getString('broker_url') ?? 'https://cloud-usb.onrender.com';
     final isOnline = prefs.getBool('is_online') ?? false;
     final startOnBoot = await StartupService.isEnabled();
 
@@ -360,7 +360,7 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
             const Icon(Icons.info_outline, color: Colors.white24, size: 16),
             const SizedBox(width: 10),
             Expanded(child: Text(
-              'After going online, open ${_brokerUrl.replaceAll('https://drivenet-broker.onrender.com', 'your web app')} in any browser on any network. Log in with the same Gmail to access your drive anywhere in the world.',
+              'After going online, open ${_brokerUrl.replaceAll('https://cloud-usb.onrender.com', 'your web app')} in any browser on any network. Log in with the same Gmail to access your drive anywhere in the world.',
               style: TextStyle(color: Colors.grey[600], fontSize: 10, height: 1.6),
             )),
           ]),
@@ -566,7 +566,7 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
   // Answers: which email is logged in + which drive is being served + where to access it.
   Widget _buildStatusPanel() {
     final webUrl = _brokerUrl.contains('onrender.com')
-        ? 'https://drivenet.vercel.app'
+        ? 'https://cloud-usb.vercel.app'
         : _brokerUrl;
 
     return Container(

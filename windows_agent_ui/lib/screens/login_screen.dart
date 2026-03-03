@@ -19,8 +19,8 @@ class _LoginScreenState extends State<LoginScreen> {
   String _statusCode = '// AUTH_PENDING';
   HttpServer? _callbackServer;
 
-  final _dashboardController = TextEditingController(text: 'https://drivenet.vercel.app');
-  final _brokerController = TextEditingController(text: 'https://drivenet-broker.onrender.com');
+  final _dashboardController = TextEditingController(text: 'https://cloud-usb.vercel.app');
+  final _brokerController = TextEditingController(text: 'https://cloud-usb.onrender.com');
 
   @override
   void initState() {
@@ -32,8 +32,8 @@ class _LoginScreenState extends State<LoginScreen> {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
       setState(() {
-        _dashboardController.text = prefs.getString('dashboard_url') ?? 'https://drivenet.vercel.app';
-        _brokerController.text = prefs.getString('broker_url') ?? 'https://drivenet-broker.onrender.com';
+        _dashboardController.text = prefs.getString('dashboard_url') ?? 'https://cloud-usb.vercel.app';
+        _brokerController.text = prefs.getString('broker_url') ?? 'https://cloud-usb.onrender.com';
       });
     }
   }

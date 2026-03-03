@@ -1,7 +1,7 @@
 class AppConfig {
   static const String brokerUrl = String.fromEnvironment(
     'BROKER_URL',
-    defaultValue: 'https://drivenet-broker.onrender.com',
+    defaultValue: 'https://cloud-usb.onrender.com',
   );
 
   static const String googleClientId = String.fromEnvironment(

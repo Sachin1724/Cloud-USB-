@@ -26,7 +26,7 @@ class TunnelClient {
 
     final prefs = await SharedPreferences.getInstance();
     // Always use the deployed cloud backend — this works from ANY network in the world
-    final brokerBaseUrl = prefs.getString('broker_url') ?? 'https://drivenet-broker.onrender.com';
+    final brokerBaseUrl = prefs.getString('broker_url') ?? 'https://cloud-usb.onrender.com';
     final cloudWsUrl = brokerBaseUrl.replaceAll('http://', 'ws://').replaceAll('https://', 'wss://');
     String agentId = prefs.getString('agent_id') ?? 'desktop-node-01';
 
