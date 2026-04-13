@@ -10,9 +10,10 @@ interface SystemStats {
     timestamp?: number;
 }
 
+const RAW_API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API = RAW_API.endsWith('/') ? RAW_API.slice(0, -1) : RAW_API;
+
 const SystemStatsView: React.FC = () => {
-    const RAW_API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    const API = RAW_API.endsWith('/') ? RAW_API.slice(0, -1) : RAW_API;
     const navigate = useNavigate();
     const [stats, setStats] = useState<SystemStats | null>(null);
 

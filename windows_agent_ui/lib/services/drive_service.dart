@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 class DriveService {
   /// Gets all logical drives and their details via PowerShell
@@ -30,7 +31,7 @@ class DriveService {
         return drives;
       }
     } catch (e) {
-      print('Error fetching drives: $e');
+      debugPrint('Error fetching drives: $e');
     }
     return [];
   }
@@ -88,7 +89,7 @@ class DriveService {
         return drives;
       }
     } catch (e) {
-      print('Error getting drive details: $e');
+      debugPrint('Error getting drive details: $e');
     }
 
     // Fallback: return drives without detail
