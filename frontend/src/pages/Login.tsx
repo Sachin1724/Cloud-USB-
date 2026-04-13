@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { GoogleLogin } from '@react-oauth/google';
@@ -11,14 +11,9 @@ const Login: React.FC = () => {
     const isAgentMode = searchParams.get('agent') === 'true';
 
     const [error, setError] = useState('');
-    const [agentStatus, setAgentStatus] = useState('');
-
-    // If in agent mode, show a banner
-    useEffect(() => {
-        if (isAgentMode) {
-            setAgentStatus('FLUTTER AGENT MODE — Sign in to activate device sync');
-        }
-    }, [isAgentMode]);
+    const [agentStatus, setAgentStatus] = useState(
+        isAgentMode ? 'FLUTTER AGENT MODE — Sign in to activate device sync' : ''
+    );
 
     const sendTokenToAgent = async (token: string, user: string) => {
         if (!isAgentMode) return;
@@ -36,7 +31,7 @@ const Login: React.FC = () => {
         }
     };
 
-    const handleGoogleSuccess = async (credentialResponse: any) => {
+    const handleGoogleSuccess = async (credentialResponse: { credential?: string }) => {
         setError('');
         try {
             const res = await axios.post(`${API}/api/auth/login`, {
@@ -47,8 +42,12 @@ const Login: React.FC = () => {
                 await sendTokenToAgent(res.data.token, res.data.user);
                 if (!isAgentMode) navigate('/dashboard');
             }
-        } catch (err: any) {
-            setError(err.response?.data?.error || 'Google Authentication Failed');
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err)) {
+                setError(err.response?.data?.error || 'Google Authentication Failed');
+            } else {
+                setError('Google Authentication Failed');
+            }
         }
     };
 

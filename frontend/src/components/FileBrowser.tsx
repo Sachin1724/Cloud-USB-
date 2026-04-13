@@ -19,7 +19,7 @@ function loadActivity(): ActivityEntry[] {
     try { return JSON.parse(sessionStorage.getItem('dn_activity') || '[]'); } catch { return []; }
 }
 function saveActivity(a: ActivityEntry[]) {
-    try { sessionStorage.setItem('dn_activity', JSON.stringify(a.slice(0, 100))); } catch { }
+    try { sessionStorage.setItem('dn_activity', JSON.stringify(a.slice(0, 100))); } catch { /* ignore */ }
 }
 
 const FileBrowser: React.FC = () => {
@@ -68,7 +68,7 @@ const FileBrowser: React.FC = () => {
                 setAgentInfo(res.data);
                 // Auto-select first online drive
                 if (res.data.drives && res.data.drives.length > 0 && !selectedDrive) {
-                    const onlineDrive = res.data.drives.find((d: any) => d.online) || res.data.drives[0];
+                    const onlineDrive = res.data.drives.find((d: { online: boolean; drive: string; }) => d.online) || res.data.drives[0];
                     setSelectedDrive(onlineDrive.drive);
                     setCurrentPath(onlineDrive.drive.endsWith('\\') ? onlineDrive.drive : onlineDrive.drive + '\\');
                 }
@@ -115,7 +115,7 @@ const FileBrowser: React.FC = () => {
             try {
                 const p = JSON.parse(atob(token.split('.')[1]));
                 setUserEmail(p.user ?? 'AGENT_ADMIN');
-            } catch { }
+            } catch { /* ignore */ }
         }
         fetchFiles('');
         fetchStats();
@@ -270,7 +270,7 @@ const FileBrowser: React.FC = () => {
             addActivity({ name: file.name, action: 'UPLOADED', time: Date.now(), size: file.size });
             showToast(`✓ ${file.name} uploaded`, true);
             fetchFiles(currentPath);
-        } catch (err: any) {
+        } catch {
             setUploadProgress(p => { const n = { ...p }; delete n[file.name]; return n; });
             showToast('Upload failed — agent disconnected or network error', false);
         }
@@ -463,7 +463,7 @@ const FileBrowser: React.FC = () => {
                             <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Drives</span>
                         </div>
                         <div className="flex flex-wrap gap-2 mb-2">
-                            {agentInfo.drives.map((drive: any, idx: number) => (
+                            {agentInfo.drives.map((drive: { drive: string; online: boolean; }, idx: number) => (
                                 <button
                                     key={idx}
                                     onClick={() => {

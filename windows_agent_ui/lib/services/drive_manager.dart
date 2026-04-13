@@ -42,8 +42,8 @@ class DriveManager {
     
     // Check if it's a full drive path like "E:\" - validate against registered drive
     if (decodedPath.length >= 2 && decodedPath[1] == ':') {
-      String requestedDriveRoot = decodedPath.substring(0, 2).toUpperCase() + '\\';
-      String registeredDriveRoot = root.substring(0, 2).toUpperCase() + '\\';
+      String requestedDriveRoot = '${decodedPath.substring(0, 2).toUpperCase()}\\';
+      String registeredDriveRoot = '${root.substring(0, 2).toUpperCase()}\\';
       
       // Only allow the registered drive
       if (requestedDriveRoot != registeredDriveRoot) {
@@ -481,7 +481,7 @@ class DriveManager {
         'payload': base64String,
       };
     } catch (e) {
-      print('Thumbnail error: $e.');
+      debugPrint('Thumbnail error: $e.');
       await _downloadFile(filePath, wsSend, requestId);
       return null;
     }
@@ -557,7 +557,7 @@ class DriveManager {
 
   static String _trashDir(String root) {
     final base = root.endsWith('\\') ? root : '$root\\';
-    return '${base}.drivenet_trash';
+    return '$base.drivenet_trash';
   }
 
   static Future<Map<String, dynamic>> _moveToTrash(String? itemPath, {String? driveOverride}) async {
