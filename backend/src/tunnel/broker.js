@@ -21,6 +21,7 @@ class TunnelBroker {
         if (!email) return;
         const drive = rawDrive.replace(/[\\/]+$/, '').trim();
         const info = this.agentInfo.get(email) || { email, agentId: null, online: false, drives: [] };
+        if (!info.drives) info.drives = [];
         const driveUpper = drive.toUpperCase();
         const existingIndex = info.drives.findIndex(d => d.drive.toUpperCase() === driveUpper);
         
@@ -96,6 +97,7 @@ class TunnelBroker {
             const email = decoded.user;
             const existing = this.agentInfo.get(email) || {};
             this.agentInfo.set(email, {
+                drives: [], // Initialize drives list
                 ...existing,
                 email: email,
                 agentId,

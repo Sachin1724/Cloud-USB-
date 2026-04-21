@@ -12,17 +12,28 @@ import { tunnelBroker } from './tunnel/broker.js';
 const app = express();
 const server = createServer(app);
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
+const allowedOrigins = [
+    'https://cloud-usb.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    ...(process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean)
+];
 
 app.use(cors({
-    origin(origin, cb) {
-        if (!origin) return cb(null, true);
-        if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) return cb(null, true);
-        return cb(new Error('CORS blocked'));
-    }
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.length === 0) {
+            callback(null, true);
+        } else {
+            console.log('[CORS] Blocked origin:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-agent-id', 'x-active-drive']
 }));
 
 // Rate limiting – 120 requests per minute per IP

@@ -193,9 +193,22 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
           decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.03), borderRadius: BorderRadius.circular(16)),
           child: Row(
             children: [
-              CircleAvatar(radius: 14, backgroundColor: dnAccent.withValues(alpha: 0.2), child: Text(_userEmail.isNotEmpty ? _userEmail.substring(0, 1).toUpperCase() : '?', style: const TextStyle(color: dnAccent, fontSize: 10, fontWeight: FontWeight.bold))),
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: dnAccent.withValues(alpha: 0.2),
+                child: Text(
+                  _userEmail.length >= 1 ? _userEmail[0].toUpperCase() : '?',
+                  style: const TextStyle(color: dnAccent, fontSize: 10, fontWeight: FontWeight.bold)
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: Text(_userEmail.split('@')[0], style: const TextStyle(color: dnText, fontSize: 11, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+              Expanded(
+                child: Text(
+                  _userEmail.contains('@') ? _userEmail.split('@')[0] : _userEmail,
+                  style: const TextStyle(color: dnText, fontSize: 11, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis
+                )
+              ),
             ],
           ),
         ),
@@ -262,7 +275,11 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
         children: [
           _buildSettingsSection('General', [
             _buildSettingToggle('Launch on system startup', 'Automatically start the agent when Windows boots.', _startOnBoot, (v) async {
-              await StartupService.setEnabled(v);
+              if (v) {
+                await StartupService.enable();
+              } else {
+                await StartupService.disable();
+              }
               setState(() => _startOnBoot = v);
             }),
           ]),
