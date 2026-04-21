@@ -11,7 +11,7 @@ interface RecentItem {
 }
 
 const Recent: React.FC = () => {
-    const RAW_API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const RAW_API = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000';
     const API = RAW_API.endsWith('/') ? RAW_API.slice(0, -1) : RAW_API;
     const { agent } = useOutletContext<any>();
     const navigate = useNavigate();

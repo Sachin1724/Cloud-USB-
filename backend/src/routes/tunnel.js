@@ -50,7 +50,7 @@ router.get('/share/links', (req, res) => {
 router.get('/share/metadata', (req, res) => {
     const { token } = req.query;
     if (!token) return res.status(400).json({ error: 'token required' });
-    const link = tunnelBroker.sharedLinks.get(token as string);
+    const link = tunnelBroker.sharedLinks.get(token);
     if (!link) return res.status(404).json({ error: 'Link expired or invalid' });
     return res.json({ 
         name: link.path.split(/[/\\]/).pop(),

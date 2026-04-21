@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { useNavigate, useLocation, useOutletContext } from 'react-router-dom';
 import FileViewer from './FileViewer';
-import { toast } from 'react-hot-toast'; // Assuming we want some notification
 
 interface FileItem {
   name: string;
@@ -32,7 +31,6 @@ const FileBrowser: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
-    const [sharingId, setSharingId] = useState<string | null>(null);
 
     const queryParams = new URLSearchParams(location.search);
     const currentPath = queryParams.get('path') || '';

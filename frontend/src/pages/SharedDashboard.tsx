@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useOutletContext } from 'react-router-dom';
 
 interface SharedLink {
     token: string;
@@ -10,8 +9,8 @@ interface SharedLink {
     createdAt: string;
 }
 
-const Shared: React.FC = () => {
-    const RAW_API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const SharedDashboard: React.FC = () => {
+    const RAW_API = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000';
     const API = RAW_API.endsWith('/') ? RAW_API.slice(0, -1) : RAW_API;
     
     const [links, setLinks] = useState<SharedLink[]>([]);
@@ -117,4 +116,4 @@ const Shared: React.FC = () => {
     );
 };
 
-export default Shared;
+export default SharedDashboard;

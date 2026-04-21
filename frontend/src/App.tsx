@@ -1,14 +1,15 @@
-
+import React from 'react';
+// DriveNet App Root
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import FileBrowser from './components/FileBrowser';
-import SharedView from './pages/SharedView';
-import Recent from './pages/Recent';
-import Shared from './pages/Shared';
-import Trash from './pages/Trash';
+import SharedView from './pages/SharedView.tsx';
+import Recent from './pages/Recent.tsx';
+import SharedDashboard from './pages/SharedDashboard.tsx';
+import Trash from './pages/Trash.tsx';
 
 // Auth guard: redirect to login if no token
 function RequireAuth({ children }: { children: React.ReactElement }) {
@@ -41,7 +42,7 @@ function App() {
             <Route index element={<FileBrowser />} />
             <Route path="files" element={<FileBrowser />} />
             <Route path="recent" element={<Recent />} />
-            <Route path="shared" element={<Shared />} />
+            <Route path="shared" element={<SharedDashboard />} />
             <Route path="trash" element={<Trash />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
