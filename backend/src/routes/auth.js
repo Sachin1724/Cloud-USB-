@@ -110,4 +110,8 @@ export const authenticateToken = (req, res, next) => {
     });
 };
 
+router.get('/me', authenticateToken, (req, res) => {
+    res.json(req.user);
+});
+
 export default router;

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
 import FileBrowser from './components/FileBrowser';
 
 // Auth guard: redirect to login if no token
@@ -31,7 +32,10 @@ function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<RedirectIfAuth><Login /></RedirectIfAuth>} />
-          <Route path="/dashboard/*" element={<RequireAuth><FileBrowser /></RequireAuth>} />
+          <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>}>
+            <Route index element={<FileBrowser />} />
+            <Route path="files" element={<FileBrowser />} />
+          </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

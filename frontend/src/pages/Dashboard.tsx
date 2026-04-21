@@ -1,106 +1,167 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
+import axios from 'axios';
+
+interface UserProfile {
+    user: string;
+    g_uid: string;
+}
+
+interface AgentStatus {
+    online: boolean;
+    drive: string | null;
+    drives: { drive: string; online: boolean }[];
+    email: string;
+}
 
 const Dashboard: React.FC = () => {
+    const RAW_API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const API = RAW_API.endsWith('/') ? RAW_API.slice(0, -1) : RAW_API;
     const navigate = useNavigate();
     const location = useLocation();
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    const [user, setUser] = useState<UserProfile | null>(null);
+    const [agent, setAgent] = useState<AgentStatus | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    const fetchData = async () => {
+        const token = localStorage.getItem('drivenet_token');
+        if (!token) {
+            navigate('/login');
+            return;
+        }
+
+        try {
+            const [userRes, agentRes] = await Promise.all([
+                axios.get(`${API}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get(`${API}/api/fs/me/agent`, { headers: { Authorization: `Bearer ${token}` } })
+            ]);
+            setUser(userRes.data);
+            setAgent(agentRes.data);
+
+            // Sync Logic: Redirect to active drive if on /dashboard root
+            if (location.pathname === '/dashboard' || location.pathname === '/dashboard/') {
+                const activeDrive = agentRes.data.drive;
+                if (activeDrive) {
+                    navigate(`/dashboard/files?drive=${encodeURIComponent(activeDrive)}`);
+                }
+            }
+        } catch (err: any) {
+            console.error('[Dashboard] Fetch error:', err);
+            if (err.response?.status === 401) {
+                localStorage.removeItem('drivenet_token');
+                navigate('/login');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+        // Poll for agent status updates every 10 seconds
+        const interval = setInterval(fetchData, 10000);
+        return () => clearInterval(interval);
+    }, [location.pathname]);
 
     const handleLogout = () => {
         localStorage.removeItem('drivenet_token');
         navigate('/login');
     };
 
-    const navItems = [
-        { icon: 'dashboard', label: 'Overview', path: '/dashboard' },
-        { icon: 'folder_open', label: 'Files', path: '/dashboard/files' },
-    ];
+    if (loading && !user) {
+        return (
+            <div className="min-h-screen bg-dn-bg flex items-center justify-center">
+                <div className="w-10 h-10 border-4 border-dn-accent/20 border-t-dn-accent rounded-full animate-spin" />
+            </div>
+        );
+    }
 
     return (
-        <div className="bg-surface-900 font-sans text-white min-h-screen flex flex-col overflow-x-hidden">
-            {/* Top Navigation */}
-            <header className="relative z-20 flex items-center justify-between glass border-b border-white/[0.06] px-4 sm:px-6 py-3">
-                <div className="flex items-center gap-4">
-                    <button
-                        className="md:hidden text-white/50 hover:text-white transition-colors"
-                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        <div className="flex min-h-screen bg-dn-bg overflow-hidden text-dn-text">
+            {/* Sidebar (Global Stitch Shell) */}
+            <aside className="fixed left-0 top-0 h-screen w-[220px] z-50 glass-sidebar flex flex-col py-8 px-4 gap-10">
+                <div className="px-2">
+                    <span 
+                        className="text-xl font-black tracking-tighter text-dn-text cursor-pointer"
+                        onClick={() => navigate('/')}
                     >
-                        <span className="material-symbols-outlined text-2xl">menu</span>
-                    </button>
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center">
-                            <span className="material-symbols-outlined text-white text-lg">cloud_upload</span>
+                        DriveNet Explorer
+                    </span>
+                    
+                    {/* User Profile Section */}
+                    <div className="flex items-center gap-3 mt-8 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group relative">
+                        <div className="w-8 h-8 rounded-full bg-dn-accent/20 flex items-center justify-center text-dn-accent font-bold text-xs uppercase shadow-sm">
+                            {user?.user?.charAt(0) || 'U'}
                         </div>
-                        <span className="text-lg font-bold tracking-tight">DriveNet</span>
+                        <div className="flex flex-col overflow-hidden">
+                            <span className="text-xs font-semibold truncate text-dn-text" title={user?.user}>
+                                {user?.user?.split('@')[0] || 'User'}
+                            </span>
+                            <span className="text-[10px] text-dn-subtext uppercase tracking-wider font-bold opacity-60">Pro Account</span>
+                        </div>
+                        
+                        {/* Tooltip or Mini-Menu placeholder */}
+                        <div className="absolute left-full ml-4 px-3 py-2 bg-dn-surface-highest rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap text-[10px] font-bold border border-dn-border/20 z-[60]">
+                            {user?.user}
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    {/* Connection Status */}
-                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-400/10 border border-green-400/20">
-                        <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
-                        <span className="text-xs font-medium text-green-400/80">Agent Online</span>
-                    </div>
-                    <button
-                        onClick={handleLogout}
-                        className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white transition-all"
-                        title="Logout"
+                <nav className="flex flex-col gap-1 flex-1">
+                    <button 
+                        onClick={() => navigate('/dashboard/files')}
+                        className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium ${
+                            location.pathname.includes('/files') 
+                                ? 'text-dn-text bg-dn-accent/10 active-nav-indicator scale-[0.98]' 
+                                : 'text-dn-subtext hover:bg-dn-surface-low hover:text-dn-text'
+                        }`}
                     >
-                        <span className="material-symbols-outlined text-xl">logout</span>
+                        <span className={`material-symbols-outlined ${location.pathname.includes('/files') ? 'text-dn-primary' : ''}`} style={{ fontVariationSettings: location.pathname.includes('/files') ? "'FILL' 1" : "" }}>folder</span>
+                        <span>My Vault</span>
                     </button>
-                </div>
-            </header>
+                    <button className="flex items-center gap-3 px-3 py-2.5 text-dn-subtext hover:bg-dn-surface-low hover:text-dn-text rounded-lg transition-colors text-sm font-medium">
+                        <span className="material-symbols-outlined">schedule</span>
+                        <span>Recent</span>
+                    </button>
+                    <button className="flex items-center gap-3 px-3 py-2.5 text-dn-subtext hover:bg-dn-surface-low hover:text-dn-text rounded-lg transition-colors text-sm font-medium">
+                        <span className="material-symbols-outlined">group</span>
+                        <span>Shared</span>
+                    </button>
+                    <button className="flex items-center gap-3 px-3 py-2.5 text-dn-subtext hover:bg-dn-surface-low hover:text-dn-text rounded-lg transition-colors text-sm font-medium">
+                        <span className="material-symbols-outlined">delete</span>
+                        <span>Trash</span>
+                    </button>
+                </nav>
 
-            <div className="flex flex-1 overflow-hidden relative">
-                {/* Mobile Overlay */}
-                {isSidebarOpen && (
-                    <div
-                        className="fixed inset-0 bg-black/60 z-20 md:hidden backdrop-blur-sm"
-                        onClick={() => setIsSidebarOpen(false)}
-                    />
-                )}
-
-                {/* Sidebar */}
-                <aside className={`fixed md:relative z-30 w-60 h-full bg-surface-950/80 backdrop-blur-xl border-r border-white/[0.06] flex flex-col py-6 transition-transform duration-300 ease-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
-                    <div className="px-4 mb-2">
-                        <p className="text-[11px] font-semibold text-white/20 uppercase tracking-wider px-3 mb-3">Navigation</p>
-                        <nav className="flex flex-col gap-1">
-                            {navItems.map((item) => (
-                                <a
-                                    key={item.path}
-                                    onClick={() => { navigate(item.path); setIsSidebarOpen(false); }}
-                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-sm font-medium ${
-                                        location.pathname === item.path
-                                            ? 'bg-primary/10 text-primary'
-                                            : 'text-white/40 hover:text-white/70 hover:bg-white/[0.04]'
-                                    }`}
-                                >
-                                    <span className="material-symbols-outlined text-xl">{item.icon}</span>
-                                    <span>{item.label}</span>
-                                </a>
-                            ))}
-                        </nav>
-                    </div>
-
-                    {/* Bottom Info */}
-                    <div className="mt-auto px-4">
-                        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                            <div className="flex items-center gap-2 mb-2">
-                                <span className="material-symbols-outlined text-primary text-lg">info</span>
-                                <span className="text-xs font-semibold text-white/50">Connection</span>
-                            </div>
-                            <p className="text-[11px] text-white/25 leading-relaxed">
-                                Secure tunnel active. Your files are encrypted end-to-end.
-                            </p>
+                <div className="mt-auto px-2 space-y-4">
+                    <button className="w-full dn-button-primary py-3 rounded-xl">Upgrade Storage</button>
+                    
+                    <div className="flex flex-col gap-1">
+                        <div className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition-colors ${agent?.online ? 'text-dn-success bg-dn-success/5' : 'text-dn-error bg-dn-error/5'}`}>
+                            <span className={`material-symbols-outlined text-sm ${agent?.online ? 'animate-pulse' : ''}`}>
+                                {agent?.online ? 'cloud_done' : 'cloud_off'}
+                            </span>
+                            <span className="text-[10px] font-black uppercase tracking-tight">
+                                {agent?.online ? 'Agent Online' : 'Agent Offline'}
+                            </span>
                         </div>
+                        
+                        <button 
+                            onClick={handleLogout}
+                            className="flex items-center gap-3 px-2 py-1.5 text-dn-muted hover:text-dn-error hover:bg-dn-error/5 rounded-lg transition-all text-[10px] font-black uppercase tracking-widest"
+                        >
+                            <span className="material-symbols-outlined text-sm">logout</span>
+                            <span>Sign Out</span>
+                        </button>
                     </div>
-                </aside>
+                </div>
+            </aside>
 
-                {/* Main Content */}
-                <main className="flex-1 overflow-y-auto overflow-x-hidden relative w-full">
-                    <Outlet />
-                </main>
-            </div>
+            {/* Main Content Area */}
+            <main className="flex-1 ml-[220px] h-screen flex flex-col relative">
+                <Outlet context={{ agent, user, fetchData }} />
+            </main>
         </div>
     );
 };
