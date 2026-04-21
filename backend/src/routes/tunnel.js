@@ -12,6 +12,7 @@ router.use(authenticateToken);
 
 router.get('/me/agent', (req, res) => {
     const email = req.user?.user;
+    const agentId = req.user?.g_uid || req.user?.user;
     if (!email) return res.status(401).json({ error: 'Unidentified User' });
 
     const info = tunnelBroker.getAgentInfo(email);
@@ -46,6 +47,7 @@ router.post('/me/set-active-drive', express.json(), (req, res) => {
 
 router.post('/me/register-drive', express.json(), (req, res) => {
     const email = req.user?.user;
+    const agentId = req.user?.g_uid || req.user?.user;
     if (!email) return res.status(401).json({ error: 'Unidentified User' });
     const { drive } = req.body;
     if (!drive) return res.status(400).json({ error: 'drive field required' });
