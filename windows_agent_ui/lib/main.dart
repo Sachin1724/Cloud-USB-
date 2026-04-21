@@ -79,11 +79,11 @@ class DriveSyncApp extends StatelessWidget {
     return MaterialApp(
       title: 'USB CLIENT',
       theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF0F0F14), // dn-bg
+        scaffoldBackgroundColor: const Color(0xFF131318), // dn-bg (Stitch)
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF007AFF), // dn-accent
-          secondary: Color(0xFF338BFF),
-          surface: Color(0xFF16161D), // dn-surface
+          primary: Color(0xFF6366F1), // dn-accent (Indigo)
+          secondary: Color(0xFF818CF8),
+          surface: Color(0xFF1F1F25), // dn-surface
         ),
       ),
       home: const TrayManager(),

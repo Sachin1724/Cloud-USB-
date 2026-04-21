@@ -62,6 +62,13 @@ const FileBrowser: React.FC = () => {
         fetchFiles();
     }, [currentPath, currentDrive]);
 
+    // Auto-sync: If no drive is in URL, but agent has one, navigate to it
+    useEffect(() => {
+        if (!currentDrive && agent?.online && agent?.drive) {
+            navigate(`?drive=${encodeURIComponent(agent.drive)}`);
+        }
+    }, [currentDrive, agent?.online, agent?.drive]);
+
     const filteredFiles = useMemo(() => {
         return files.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
     }, [files, searchQuery]);

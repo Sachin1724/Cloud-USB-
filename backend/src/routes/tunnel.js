@@ -11,10 +11,10 @@ router.use(authenticateToken);
 // ─── DRIVE IDENTITY ROUTES ────────────────────────────────────────────────────
 
 router.get('/me/agent', (req, res) => {
-    const agentId = req.user?.g_uid || req.user?.user;
-    if (!agentId) return res.status(401).json({ error: 'Unidentified User' });
+    const email = req.user?.user;
+    if (!email) return res.status(401).json({ error: 'Unidentified User' });
 
-    const info = tunnelBroker.getAgentInfo(agentId);
+    const info = tunnelBroker.getAgentInfo(email);
     if (!info) {
         return res.json({ online: false, drive: null, drives: [], email: req.user?.user });
     }
@@ -34,24 +34,24 @@ router.get('/me/agent', (req, res) => {
 });
 
 router.post('/me/set-active-drive', express.json(), (req, res) => {
-    const agentId = req.user?.g_uid || req.user?.user;
-    if (!agentId) return res.status(401).json({ error: 'Unidentified User' });
+    const email = req.user?.user;
+    if (!email) return res.status(401).json({ error: 'Unidentified User' });
     const { drive } = req.body;
     if (!drive) return res.status(400).json({ error: 'drive field required' });
 
-    tunnelBroker.setActiveDrive(agentId, drive);
-    console.log(`[DriveNet] Active drive set: ${req.user?.user} → ${drive}`);
+    tunnelBroker.setActiveDrive(email, drive);
+    console.log(`[DriveNet] Active drive set: ${email} → ${drive}`);
     return res.json({ ok: true, drive });
 });
 
 router.post('/me/register-drive', express.json(), (req, res) => {
-    const agentId = req.user?.g_uid || req.user?.user;
-    if (!agentId) return res.status(401).json({ error: 'Unidentified User' });
+    const email = req.user?.user;
+    if (!email) return res.status(401).json({ error: 'Unidentified User' });
     const { drive } = req.body;
     if (!drive) return res.status(400).json({ error: 'drive field required' });
 
-    const info = tunnelBroker.registerDrive(agentId, drive);
-    console.log(`[DriveNet] Drive registered: ${req.user?.user} → ${drive}`);
+    const info = tunnelBroker.registerDrive(email, drive);
+    console.log(`[DriveNet] Drive registered: ${email} → ${drive}`);
 
     return res.json({
         ok: true,

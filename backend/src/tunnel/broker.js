@@ -12,23 +12,23 @@ class TunnelBroker {
     }
 
     // Get agent info with all drives
-    getAgentInfo(agentId) {
-        return this.agentInfo.get(agentId) || null;
+    getAgentInfo(email) {
+        return this.agentInfo.get(email) || null;
     }
 
-    // Add or update a drive for an agent
-    registerDrive(agentId, drive) {
-        const info = this.agentInfo.get(agentId) || { email: agentId, drives: [] };
+    // Add or update a drive for an agent (email is the key)
+    registerDrive(email, drive) {
+        const info = this.agentInfo.get(email) || { email: email, drives: [] };
         const driveUpper = drive.toUpperCase();
         const existingIndex = info.drives.findIndex(d => d.drive.toUpperCase() === driveUpper);
         
         if (existingIndex >= 0) {
-            info.drives[existingIndex].online = this.agents.has(agentId);
+            info.drives[existingIndex].online = true; // assume online if registering
             info.drives[existingIndex].lastSeen = new Date().toISOString();
         } else {
             info.drives.push({
                 drive,
-                online: this.agents.has(agentId),
+                online: true,
                 lastSeen: new Date().toISOString()
             });
         }
@@ -36,16 +36,16 @@ class TunnelBroker {
         // Set this drive as the active (selected) drive
         info.activeDrive = drive;
         info.lastSeen = new Date().toISOString();
-        this.agentInfo.set(agentId, info);
+        this.agentInfo.set(email, info);
         return info;
     }
     
-    // Set the active drive (called when user selects a drive in Windows client)
-    setActiveDrive(agentId, drive) {
-        const info = this.agentInfo.get(agentId);
+    // Set the active drive (emaul is the key)
+    setActiveDrive(email, drive) {
+        const info = this.agentInfo.get(email);
         if (info) {
             info.activeDrive = drive;
-            this.agentInfo.set(agentId, info);
+            this.agentInfo.set(email, info);
         }
         return info;
     }
@@ -89,11 +89,12 @@ class TunnelBroker {
 
             this.agents.set(agentId, ws);
 
-            // Track this agent's email and online status — email is the primary key
-            const existing = this.agentInfo.get(agentId) || {};
-            this.agentInfo.set(agentId, {
+            // Track this agent's email and online status — email is the primary key for info
+            const email = decoded.user;
+            const existing = this.agentInfo.get(email) || {};
+            this.agentInfo.set(email, {
                 ...existing,
-                email: decoded.user,
+                email: email,
                 agentId,
                 online: true,
                 lastSeen: new Date().toISOString(),
@@ -161,9 +162,10 @@ class TunnelBroker {
             ws.on('close', () => {
                 console.log(`[DriveNet] Agent Disconnected: ${agentId}`);
                 this.agents.delete(agentId);
-                // Mark offline but keep the drive record so web can show last known drive
-                const info = this.agentInfo.get(agentId);
-                if (info) this.agentInfo.set(agentId, { ...info, online: false, lastSeen: new Date().toISOString() });
+                // Mark offline in the email-keyed info
+                const email = decoded.user;
+                const info = this.agentInfo.get(email);
+                if (info) this.agentInfo.set(email, { ...info, online: false, lastSeen: new Date().toISOString() });
             });
         });
     }
