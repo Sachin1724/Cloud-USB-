@@ -1,13 +1,13 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import authRoutes from './routes/auth.js';
 import tunnelRoutes from './routes/tunnel.js';
 import { tunnelBroker } from './tunnel/broker.js';
-
-dotenv.config();
 
 const app = express();
 const server = createServer(app);

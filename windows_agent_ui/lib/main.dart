@@ -79,10 +79,11 @@ class DriveSyncApp extends StatelessWidget {
     return MaterialApp(
       title: 'USB CLIENT',
       theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF0D0D14),
+        scaffoldBackgroundColor: const Color(0xFF0F0F14), // dn-bg
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFFFF4655),
-          secondary: Color(0xFF137FEC),
+          primary: Color(0xFF007AFF), // dn-accent
+          secondary: Color(0xFF338BFF),
+          surface: Color(0xFF16161D), // dn-surface
         ),
       ),
       home: const TrayManager(),
@@ -243,8 +244,8 @@ class _AppRouterState extends State<AppRouter> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(
-        backgroundColor: Color(0xFF0D0D14),
-        body: Center(child: CircularProgressIndicator(color: Color(0xFFFF4655))),
+        backgroundColor: Color(0xFF0F0F14),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFF007AFF))),
       );
     }
     return _isLoggedIn ? const DriveScreen() : const LoginScreen();

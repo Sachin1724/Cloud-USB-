@@ -26,6 +26,9 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _loadSavedUrls();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startGoogleSignIn();
+    });
   }
 
   Future<void> _loadSavedUrls() async {
@@ -137,7 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D14),
+      backgroundColor: const Color(0xFF0F0F14), // dn-bg
       body: Stack(
         children: [
           // Drag handle for frameless window
@@ -149,231 +152,180 @@ class _LoginScreenState extends State<LoginScreen> {
               child: const SizedBox(height: 40),
             ),
           ),
-          // Main layout: left red panel + right dark panel
-          Row(
-            children: [
-              // === LEFT RED PANEL ===
-              Container(
-                width: 260,
-                color: const Color(0xFFFF4655),
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Logo area
-                    Row(
-                      children: [
-                        Image.asset(
-                          'assets/icon.ico',
-                          width: 36,
-                          height: 36,
-                          errorBuilder: (_, _, _) => Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Icon(Icons.usb, color: Colors.white, size: 22),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        const Text(
-                          'USB-TO-CLOUD',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 14,
-                            letterSpacing: 2.0,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      margin: const EdgeInsets.symmetric(vertical: 20),
-                      height: 2,
-                      width: 40,
-                      color: Colors.white.withValues(alpha: 0.5),
-                    ),
-                    const Text(
-                      'SECURE PERIPHERAL ENCRYPTION & CLOUD SYNCHRONIZATION AGENT.',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        letterSpacing: 1.0,
-                        height: 1.8,
-                      ),
-                    ),
-                    const Spacer(),
-                    // Status indicators
-                    Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(4),
-                            boxShadow: const [BoxShadow(color: Colors.white54, blurRadius: 6)],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text('STATUS: ONLINE', style: TextStyle(color: Colors.white, fontSize: 10, letterSpacing: 1.5, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text('ID: 44-X00-SECURE-TERM', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 9, fontFamily: 'Courier')),
-                    Text('LOC: [GLOBAL_CLUSTER_01]', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 9, fontFamily: 'Courier')),
+          
+          // Background Glow
+          Center(
+            child: Container(
+              width: 500,
+              height: 500,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFF007AFF).withValues(alpha: 0.1),
+                    Colors.transparent,
                   ],
+                  stops: const [0.0, 0.7],
                 ),
               ),
-
-              // === RIGHT DARK PANEL ===
-              Expanded(
-                child: Container(
-                  color: const Color(0xFF1A1A2E),
-                  padding: const EdgeInsets.all(40),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Top-right status codes
-                      Align(
-                        alignment: Alignment.topRight,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text('// 0x442', style: TextStyle(color: Colors.grey[600], fontFamily: 'Courier', fontSize: 10)),
-                            Text(_statusCode, style: const TextStyle(color: Color(0xFFFF4655), fontFamily: 'Courier', fontSize: 10, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ),
-                      const Spacer(),
-                      // Title
-                      const Text(
-                        'AGENT AUTHENTICATION',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 28,
-                          letterSpacing: 2.0,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _statusText,
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 11,
-                          letterSpacing: 3.0,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Google Sign-In Button
-                      SizedBox(
-                        width: double.infinity,
-                        child: _isLoading
-                            ? Container(
-                                padding: const EdgeInsets.symmetric(vertical: 20),
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: const Color(0xFFFF4655).withValues(alpha: 0.5)),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Color(0xFFFF4655), strokeWidth: 2)),
-                                    const SizedBox(width: 16),
-                                    Text('// WAITING FOR BROWSER AUTH...', style: TextStyle(color: Colors.grey[400], letterSpacing: 2.0, fontSize: 12, fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                              )
-                            : ElevatedButton(
-                                onPressed: _startGoogleSignIn,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFFF4655),
-                                  padding: const EdgeInsets.symmetric(vertical: 22),
-                                  shape: const ContinuousRectangleBorder(),
-                                  elevation: 0,
-                                ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text('[G]', style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 2.0)),
-                                    SizedBox(width: 16),
-                                    Text(
-                                      'SIGN IN WITH GOOGLE',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: 3.0,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                      ),
-                      const SizedBox(height: 30),
-
-                      // Stay connected info box
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border(left: BorderSide(color: const Color(0xFFFF4655).withValues(alpha: 0.8), width: 3)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.refresh, color: Color(0xFFFF4655), size: 14),
-                                SizedBox(width: 8),
-                                Text('STAY CONNECTED', style: TextStyle(color: Color(0xFFFF4655), fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 2.0)),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'THIS SERVICE RUNS ON SYSTEM STARTUP. CONTINUOUSLY MAINTAINS CONNECTION. NO MANUAL INTERACTION REQUIRED AFTER BOOT.',
-                              style: TextStyle(color: Colors.grey[500], fontSize: 10, height: 1.7, letterSpacing: 1.0),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const Spacer(),
-                      // Bottom system info
-                      Row(
-                        children: [
-                          Text('SYSTEM_ARCH: WIN_X64', style: TextStyle(color: Colors.grey[700], fontSize: 9, fontFamily: 'Courier')),
-                          const SizedBox(width: 20),
-                          Text('BUILD: STABLE_1.0.2', style: TextStyle(color: Colors.grey[700], fontSize: 9, fontFamily: 'Courier')),
-                          const SizedBox(width: 20),
-                          Text('KERNEL: USB_SRV_V2', style: TextStyle(color: Colors.grey[700], fontSize: 9, fontFamily: 'Courier')),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
 
-          // Top window controls (close / minimize)
+          // Main Layout
+          Center(
+            child: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logo
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF007AFF), Color(0xFF0055CC)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF007AFF).withValues(alpha: 0.35),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.cloud_upload_rounded, color: Colors.white, size: 36),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  const Text(
+                    'DriveNet',
+                    style: TextStyle(
+                      color: Color(0xFFE8E8F0),
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Agent authentication required',
+                    style: TextStyle(
+                      color: Color(0xFF8888A8),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 48),
+
+                  // Login Card
+                  Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF16161D), // dn-surface
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: const Color(0xFF2A2A38)), // dn-border
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 40,
+                          offset: const Offset(0, 16),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        if (_isLoading)
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: const Column(
+                              children: [
+                                SizedBox(
+                                  width: 24, height: 24,
+                                  child: CircularProgressIndicator(color: Color(0xFF007AFF), strokeWidth: 2),
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  'Awaiting browser authentication...',
+                                  style: TextStyle(color: Color(0xFF8888A8), fontSize: 13, fontWeight: FontWeight.w500),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _startGoogleSignIn,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFE8E8F0), // White-ish button
+                                foregroundColor: const Color(0xFF0F0F14), // Dark text
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                elevation: 0,
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.g_mobiledata_rounded, size: 28),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Continue with Google',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 24),
+                        const Divider(color: Color(0xFF2A2A38)),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF007AFF).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.sync_rounded, color: Color(0xFF007AFF), size: 16),
+                            ),
+                            const SizedBox(width: 16),
+                            const Expanded(
+                              child: Text(
+                                'This local agent runs constantly in the background. It negotiates end-to-end encrypted tunnels automatically after auth.',
+                                style: TextStyle(color: Color(0xFF8888A8), fontSize: 11, height: 1.5),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Top Window Controls
           Positioned(
-            top: 8, right: 12,
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.close, size: 16, color: Colors.white38),
-                  onPressed: () async {
-                    await _callbackServer?.close(force: true);
-                    exit(0);
-                  },
-                  tooltip: 'Exit',
-                ),
-              ],
+            top: 12, right: 16,
+            child: IconButton(
+              icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF8888A8)),
+              onPressed: () async {
+                await _callbackServer?.close(force: true);
+                exit(0);
+              },
+              hoverColor: const Color(0xFFFF453A).withValues(alpha: 0.1), // dn-danger
+              highlightColor: const Color(0xFFFF453A).withValues(alpha: 0.2),
+              tooltip: 'Exit',
             ),
           ),
         ],

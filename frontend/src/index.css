@@ -2,97 +2,76 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer utilities {
-  .hero-skew {
-    clip-path: polygon(0 0, 100% 0, 100% 85%, 0% 100%);
-  }
-
-  .card-angle {
-    clip-path: polygon(0 0, 100% 0, 100% 90%, 90% 100%, 0 100%);
-  }
-
-  .btn-slanted {
-    clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%);
-  }
-
-  .valorant-clip {
-    clip-path: polygon(0 0, 95% 0, 100% 15%, 100% 100%, 5% 100%, 0 85%);
-  }
-
-  .valorant-clip-sm {
-    clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
-  }
-
-  .scanline {
-    background: linear-gradient(to bottom, transparent 50%, rgba(255, 71, 87, 0.05) 51%);
-    background-size: 100% 4px;
-  }
-
-  .scanlines {
-    background: linear-gradient(to bottom, rgba(255, 71, 87, 0.03) 50%, rgba(0, 0, 0, 0) 50%);
-    background-size: 100% 4px;
-  }
-
-  .grid-bg {
-    background-image: radial-gradient(circle, #ff4757 1px, transparent 1px);
-    background-size: 30px 30px;
-    opacity: 0.05;
-  }
-
-  .tech-border {
-    position: relative;
-  }
-
-  .tech-border::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    width: 20px;
-    height: 20px;
-    border-top: 2px solid #ff4757;
-    border-left: 2px solid #ff4757;
-  }
-
-  .tech-border::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    right: -2px;
-    width: 20px;
-    height: 20px;
-    border-bottom: 2px solid #ff4757;
-    border-right: 2px solid #ff4757;
-  }
-
-  .valorant-slant {
-    clip-path: polygon(0 0, 100% 0, 95% 100%, 0% 100%);
-  }
-
-  .valorant-slant-reverse {
-    clip-path: polygon(5% 0, 100% 0, 100% 100%, 0% 100%);
-  }
-
-  .neon-glow {
-    box-shadow: 0 0 15px rgba(255, 71, 87, 0.4);
+@layer base {
+  body {
+    @apply bg-dn-bg text-dn-text antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
   }
 }
 
-/* Custom Scrollbar for dark theme */
+@layer components {
+  .glass-card {
+    background: rgba(31, 31, 37, 0.4);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    @apply border border-dn-border-10 shadow-dn-card;
+  }
+  
+  .glass-sidebar {
+    background: rgba(19, 19, 24, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    @apply border-r border-dn-border-10 shadow-[40px_0_64px_-20px_rgba(0,0,0,0.5)];
+  }
+
+  .dn-button-primary {
+    @apply bg-dn-accent-container text-dn-bg px-6 py-2.5 rounded-full font-bold text-sm hover:bg-dn-primary transition-all duration-300 active:scale-95 shadow-lg;
+    box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+  }
+
+  .dn-button-secondary {
+    @apply border border-dn-border shadow-none text-dn-text px-6 py-2.5 rounded-full font-bold text-sm hover:bg-white/5 transition-all duration-300 active:scale-95;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-b from-white to-dn-primary bg-clip-text text-transparent;
+  }
+}
+
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f1923;
+  @apply bg-dn-surface-lowest;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #ff4757;
-  border-radius: 4px;
+  @apply bg-dn-muted rounded-full;
+  background-color: rgba(144, 143, 160, 0.2);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #ff6b81;
+  background-color: rgba(144, 143, 160, 0.4);
+}
+
+/* Sidebar Active Indicator */
+.active-nav-indicator::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 25%;
+  height: 50%;
+  width: 3px;
+  @apply bg-dn-accent rounded-r-full;
+}
+
+/* Glow Utility */
+.glow-subtle {
+  box-shadow: 0 0 80px -20px rgba(128, 131, 255, 0.15);
+}
+
+.border-dn-border-10 {
+  border-color: rgba(70, 69, 84, 0.1);
 }

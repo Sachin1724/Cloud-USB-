@@ -39,6 +39,17 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
   Timer? _autoConnectTimer;  // Pings broker until internet comes up, then goes online
   bool _autoConnectDone = false;
 
+  // dn-colors
+  static const Color dnBg = Color(0xFF0F0F14);
+  static const Color dnSurface = Color(0xFF16161D);
+  static const Color dnBorder = Color(0xFF2A2A38);
+  static const Color dnText = Color(0xFFE8E8F0);
+  static const Color dnSubText = Color(0xFF8888A8);
+  static const Color dnAccent = Color(0xFF007AFF);
+  static const Color dnSuccess = Color(0xFF30D158);
+  static const Color dnWarn = Color(0xFFFF9F0A);
+  static const Color dnDanger = Color(0xFFFF453A);
+
   @override
   void initState() {
     super.initState();
@@ -181,8 +192,8 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('✓ $_selectedDrive\\ is now YOUR cloud drive — access it from anywhere',
-              style: const TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: const Color(0xFFFF4655),
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+          backgroundColor: dnSuccess,
           duration: const Duration(seconds: 4),
         ));
       }
@@ -190,7 +201,8 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
       setState(() => _goingOnline = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error: $e'), backgroundColor: Colors.red[900],
+          content: Text('Error: $e', style: const TextStyle(color: Colors.white)), 
+          backgroundColor: dnDanger,
         ));
       }
     }
@@ -244,7 +256,7 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D14),
+      backgroundColor: dnBg,
       body: Stack(children: [
         Column(children: [
           _buildTitleBar(),
@@ -266,32 +278,32 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
   Widget _buildTitleBar() {
     return Container(
       height: 44,
-      color: const Color(0xFF0A0A10),
+      color: dnSurface,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(children: [
         Container(
           width: 24, height: 24,
-          decoration: BoxDecoration(color: const Color(0xFFFF4655), borderRadius: BorderRadius.circular(4)),
-          child: const Center(child: Icon(Icons.cloud_sync, color: Colors.white, size: 14)),
+          decoration: BoxDecoration(color: dnAccent, borderRadius: BorderRadius.circular(6)),
+          child: const Center(child: Icon(Icons.cloud_sync_rounded, color: Colors.white, size: 14)),
         ),
         const SizedBox(width: 10),
-        const Text('DRIVENET', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 3)),
+        const Text('DRIVENET', style: TextStyle(color: dnText, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.5)),
         const SizedBox(width: 6),
-        Text('AGENT', style: TextStyle(color: Colors.grey[600], fontSize: 10, letterSpacing: 2)),
+        const Text('AGENT', style: TextStyle(color: dnSubText, fontSize: 10, letterSpacing: 1.5)),
         const Spacer(),
         // Status dot
         if (_isOnline) ...[
           Container(
-            width: 7, height: 7,
+            width: 8, height: 8,
             decoration: BoxDecoration(
-              color: _isConnected ? const Color(0xFFFF4655) : Colors.orange,
+              color: _isConnected ? dnSuccess : dnWarn,
               borderRadius: BorderRadius.circular(4),
-              boxShadow: [BoxShadow(color: _isConnected ? const Color(0xFFFF4655) : Colors.orange, blurRadius: 8)],
+              boxShadow: [BoxShadow(color: (_isConnected ? dnSuccess : dnWarn).withValues(alpha: 0.5), blurRadius: 4)],
             ),
           ),
           const SizedBox(width: 6),
           Text(_isConnected ? 'ONLINE' : 'CONNECTING...', style: TextStyle(
-            color: _isConnected ? const Color(0xFFFF4655) : Colors.orange,
+            color: _isConnected ? dnSuccess : dnWarn,
             fontSize: 9, letterSpacing: 1.5, fontWeight: FontWeight.bold,
           )),
           const SizedBox(width: 16),
@@ -300,17 +312,18 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
           onTap: () => windowManager.hide(),
           child: Container(
             width: 28, height: 24,
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(3), border: Border.all(color: Colors.white10)),
-            child: const Center(child: Text('─', style: TextStyle(color: Colors.white38, fontSize: 12))),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(4)),
+            child: const Center(child: Text('─', style: TextStyle(color: dnSubText, fontSize: 12))),
           ),
         ),
         const SizedBox(width: 4),
         InkWell(
           onTap: () => windowManager.hide(),
+          hoverColor: dnDanger.withValues(alpha: 0.1),
           child: Container(
             width: 28, height: 24,
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(3), border: Border.all(color: Colors.white10)),
-            child: const Center(child: Text('✕', style: TextStyle(color: Colors.white38, fontSize: 11))),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(4)),
+            child: const Center(child: Text('✕', style: TextStyle(color: dnSubText, fontSize: 11))),
           ),
         ),
       ]),
@@ -319,19 +332,19 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFFFF4655)));
+      return const Center(child: CircularProgressIndicator(color: dnAccent));
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(32),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // ── User identity ──────────────────────────────────────────────
         _buildUserCard(),
-        const SizedBox(height: 24),
+        const SizedBox(height: 32),
 
         // ── Drive selection ────────────────────────────────────────────
-        const Text('SELECT YOUR DRIVE', style: TextStyle(
-          color: Colors.white70, fontSize: 10, letterSpacing: 3, fontWeight: FontWeight.bold,
+        const Text('AVAILABLE DRIVES', style: TextStyle(
+          color: dnSubText, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold,
         )),
         const SizedBox(height: 12),
         if (_drives.isEmpty)
@@ -342,67 +355,68 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
 
         // ── GO ONLINE button ───────────────────────────────────────────
         _buildActionButton(),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
 
         // ── Active session info (shows when online) ────────────────────
         if (_isOnline) _buildStatusPanel(),
         if (_isOnline) const SizedBox(height: 16),
 
         // ── Help text ──────────────────────────────────────────────────
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0A0A12),
-            border: Border.all(color: Colors.white10),
-            borderRadius: BorderRadius.circular(4),
+        if (!_isOnline)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: dnSurface,
+              border: Border.all(color: dnBorder),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Icon(Icons.info_outline, color: dnSubText, size: 20),
+              const SizedBox(width: 12),
+              Expanded(child: Text(
+                'After going online, open ${_brokerUrl.replaceAll('https://cloud-usb.onrender.com', 'your web app')} in any browser on any network. Log in with the same Google account to securely access your drive.',
+                style: const TextStyle(color: dnSubText, fontSize: 12, height: 1.5),
+              )),
+            ]),
           ),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Icon(Icons.info_outline, color: Colors.white24, size: 16),
-            const SizedBox(width: 10),
-            Expanded(child: Text(
-              'After going online, open ${_brokerUrl.replaceAll('https://cloud-usb.onrender.com', 'your web app')} in any browser on any network. Log in with the same Gmail to access your drive anywhere in the world.',
-              style: TextStyle(color: Colors.grey[600], fontSize: 10, height: 1.6),
-            )),
-          ]),
-        ),
       ]),
     );
   }
 
   Widget _buildUserCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0A0A12),
-        border: Border.all(color: Colors.white10),
-        borderRadius: BorderRadius.circular(4),
+        color: dnSurface,
+        border: Border.all(color: dnBorder),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(children: [
         Container(
-          width: 40, height: 40,
+          width: 48, height: 48,
           decoration: BoxDecoration(
-            color: const Color(0xFFFF4655).withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFFF4655).withValues(alpha: 0.4)),
+            color: dnAccent.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(24),
           ),
-          child: const Center(child: Icon(Icons.person, color: Color(0xFFFF4655), size: 20)),
+          child: const Center(child: Icon(Icons.person_rounded, color: dnAccent, size: 24)),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 16),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_userEmail, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 2),
-          Text('Signed in via Google', style: TextStyle(color: Colors.grey[600], fontSize: 10)),
+          Text(_userEmail.split('@')[0], style: const TextStyle(color: dnText, fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(_userEmail, style: const TextStyle(color: dnSubText, fontSize: 13)),
         ])),
         // Logout
         InkWell(
           onTap: _handleLogout,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
+          hoverColor: dnDanger.withValues(alpha: 0.1),
           child: Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(children: [
-              Icon(Icons.logout, color: Colors.grey[700], size: 14),
-              const SizedBox(width: 4),
-              Text('Logout', style: TextStyle(color: Colors.grey[700], fontSize: 10)),
+              const Icon(Icons.logout_rounded, color: dnSubText, size: 16),
+              const SizedBox(width: 6),
+              const Text('Logout', style: TextStyle(color: dnSubText, fontSize: 12, fontWeight: FontWeight.w500)),
             ]),
           ),
         ),
@@ -441,46 +455,48 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFFF4655).withValues(alpha: 0.07) : const Color(0xFF0A0A12),
+          color: isSelected ? dnAccent.withValues(alpha: 0.05) : dnSurface,
           border: Border.all(
-            color: isSelected ? const Color(0xFFFF4655) : Colors.white10,
+            color: isSelected ? dnAccent : dnBorder,
             width: isSelected ? 1.5 : 1,
           ),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: isSelected ? [BoxShadow(color: dnAccent.withValues(alpha: 0.1), blurRadius: 12)] : null,
         ),
         child: Row(children: [
           Container(
-            width: 40, height: 40,
+            width: 48, height: 48,
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFFF4655) : const Color(0xFF1A1A2E),
-              borderRadius: BorderRadius.circular(6),
+              color: isSelected ? dnAccent : dnBg,
+              borderRadius: BorderRadius.circular(12),
+              border: isSelected ? null : Border.all(color: dnBorder),
             ),
-            child: Center(child: Icon(Icons.storage, color: isSelected ? Colors.white : Colors.grey[600], size: 20)),
+            child: Center(child: Icon(Icons.storage_rounded, color: isSelected ? Colors.white : dnSubText, size: 24)),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Text(label.toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1)),
-              const SizedBox(width: 8),
-              if (isLive) _chip('● LIVE', Colors.greenAccent),
-              if (isSelected && !isLive) _chip('SELECTED', const Color(0xFFFF4655)),
+              Text(label, style: const TextStyle(color: dnText, fontWeight: FontWeight.bold, fontSize: 15)),
+              const SizedBox(width: 12),
+              if (isLive) _chip('LIVE TUNNEL', dnSuccess),
+              if (isSelected && !isLive) _chip('SELECTED', dnAccent),
             ]),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Text('${usedGb.toStringAsFixed(1)} GB used of ${totalGb.toStringAsFixed(1)} GB',
-                style: TextStyle(color: Colors.grey[500], fontSize: 10)),
-            const SizedBox(height: 8),
+                style: const TextStyle(color: dnSubText, fontSize: 12)),
+            const SizedBox(height: 12),
             // Storage bar
             ClipRRect(
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(4),
               child: SizedBox(
-                height: 3,
+                height: 4,
                 child: LinearProgressIndicator(
                   value: pct.clamp(0.0, 1.0),
-                  backgroundColor: Colors.white10,
-                  color: isSelected ? const Color(0xFFFF4655) : const Color(0xFF137FEC),
+                  backgroundColor: dnBg,
+                  color: isSelected ? dnAccent : dnSubText.withValues(alpha: 0.5),
                 ),
               ),
             ),
@@ -492,13 +508,13 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
 
   Widget _chip(String label, Color color) {
     return Container(
-      margin: const EdgeInsets.only(left: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(3),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
-      child: Text(label, style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.bold)),
+      child: Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
     );
   }
 
@@ -510,33 +526,33 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: _goOffline,
-                  icon: const Icon(Icons.wifi_off, size: 16),
-                  label: const Text('GO OFFLINE', style: TextStyle(letterSpacing: 2, fontWeight: FontWeight.bold, fontSize: 11)),
+                  icon: const Icon(Icons.power_settings_new_rounded, size: 18),
+                  label: const Text('GO OFFLINE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: const BorderSide(color: Colors.white24),
-                    foregroundColor: Colors.white54,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    side: const BorderSide(color: dnBorder),
+                    foregroundColor: dnSubText,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 flex: 2,
                 child: ElevatedButton.icon(
                   onPressed: _selectedDrive != null ? _goOnline : null,
-                  icon: Icon(_isConnected ? Icons.wifi_tethering : Icons.sync, size: 16, color: Colors.greenAccent),
+                  icon: Icon(_isConnected ? Icons.cloud_done_rounded : Icons.sync_rounded, size: 18, color: Colors.white),
                   label: Text(
-                    _isConnected ? '✓ DRIVE ONLINE' : 'RECONNECTING...',
-                    style: TextStyle(
-                      color: _isConnected ? Colors.greenAccent : Colors.orange,
-                      fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 12,
+                    _isConnected ? 'DRIVE ONLINE' : 'RECONNECTING...',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600, fontSize: 14,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0a2a0a),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    backgroundColor: _isConnected ? dnSuccess : dnWarn,
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
                   ),
                 ),
@@ -545,25 +561,23 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
           : ElevatedButton.icon(
               onPressed: (_selectedDrive == null || _goingOnline) ? null : _goOnline,
               icon: _goingOnline
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Icon(Icons.cloud_upload, size: 18, color: Colors.white),
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Icon(Icons.public_rounded, size: 20, color: Colors.white),
               label: Text(
-                _goingOnline ? 'CONNECTING...' : 'GO ONLINE — MAKE IT MY CLOUD',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 12),
+                _goingOnline ? 'CONNECTING...' : 'GO ONLINE',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF4655),
-                disabledBackgroundColor: Colors.grey[800],
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                backgroundColor: dnAccent,
+                disabledBackgroundColor: dnBg,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 elevation: 0,
               ),
             ),
     );
   }
 
-  // Shows the active session details when the drive is online.
-  // Answers: which email is logged in + which drive is being served + where to access it.
   Widget _buildStatusPanel() {
     final webUrl = _brokerUrl.contains('onrender.com')
         ? 'https://cloud-usb.vercel.app'
@@ -571,70 +585,70 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF001a0e),
-        border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.4), width: 1.5),
-        borderRadius: BorderRadius.circular(4),
-        boxShadow: [BoxShadow(color: Colors.greenAccent.withValues(alpha: 0.06), blurRadius: 16)],
+        color: dnSuccess.withValues(alpha: 0.05),
+        border: Border.all(color: dnSuccess.withValues(alpha: 0.2), width: 1.5),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
-            width: 8, height: 8,
+            width: 10, height: 10,
             decoration: BoxDecoration(
-              color: Colors.greenAccent,
-              borderRadius: BorderRadius.circular(4),
-              boxShadow: const [BoxShadow(color: Colors.greenAccent, blurRadius: 8)],
+              color: dnSuccess,
+              shape: BoxShape.circle,
+              boxShadow: const [BoxShadow(color: dnSuccess, blurRadius: 10)],
             ),
           ),
-          const SizedBox(width: 10),
-          const Text('ACTIVE DRIVE SESSION', style: TextStyle(
-            color: Colors.greenAccent, fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.bold,
+          const SizedBox(width: 12),
+          const Text('SECURE TUNNEL ACTIVE', style: TextStyle(
+            color: dnSuccess, fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.bold,
           )),
         ]),
-        const SizedBox(height: 14),
-        const Divider(color: Colors.white10, height: 1),
-        const SizedBox(height: 14),
+        const SizedBox(height: 20),
+        const Divider(color: dnBorder, height: 1),
+        const SizedBox(height: 20),
 
-        _statusRow(Icons.account_circle, 'ACCOUNT', _userEmail, Colors.greenAccent,
-            subtitle: 'Gmail — your personal access key'),
-        const SizedBox(height: 12),
+        _statusRow(Icons.account_circle_rounded, 'ACCOUNT', _userEmail, dnAccent,
+            subtitle: 'Gmail authenticating this tunnel'),
+        const SizedBox(height: 16),
 
-        _statusRow(Icons.storage, 'DRIVE SERVING', _selectedDrive != null ? '$_selectedDrive\\' : '—',
-            const Color(0xFFFF4655), subtitle: 'Shared as your personal cloud drive'),
-        const SizedBox(height: 12),
+        _statusRow(Icons.storage_rounded, 'DRIVE SERVING', _selectedDrive != null ? '$_selectedDrive\\' : '—',
+            dnText, subtitle: 'Currently mounted and accessible'),
+        const SizedBox(height: 16),
 
-        _statusRow(Icons.cloud_done, 'TUNNEL', _isConnected ? 'Connected to cloud' : 'Connecting...',
-            _isConnected ? Colors.greenAccent : Colors.orange, subtitle: _brokerUrl),
-        const SizedBox(height: 12),
+        _statusRow(Icons.cloud_done_rounded, 'BROKER', _isConnected ? 'Connected via WebSocket' : 'Connecting...',
+            _isConnected ? dnSuccess : dnWarn, subtitle: _brokerUrl),
+        const SizedBox(height: 16),
 
-        _statusRow(Icons.open_in_browser, 'ACCESS FROM ANY DEVICE', webUrl,
-            const Color(0xFF137FEC), subtitle: 'Open in browser on any network — log in with same Gmail'),
-        const SizedBox(height: 12),
+        _statusRow(Icons.open_in_browser_rounded, 'WEB ACCESS', webUrl,
+            dnAccent, subtitle: 'Open this URL in any browser to access files'),
+        const SizedBox(height: 20),
+        const Divider(color: dnBorder, height: 1),
+        const SizedBox(height: 20),
 
         // Start on Boot toggle
         Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(color: Colors.purple.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-            child: const Center(child: Icon(Icons.power_settings_new, color: Colors.purple, size: 16)),
+            width: 40, height: 40,
+            decoration: BoxDecoration(color: dnBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: dnBorder)),
+            child: const Center(child: Icon(Icons.power_settings_new_rounded, color: dnText, size: 20)),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('START ON BOOT', style: TextStyle(color: Colors.grey[600], fontSize: 9, letterSpacing: 2, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 2),
+            const Text('Start on Boot', style: TextStyle(color: dnText, fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
             Text(
-              _startOnBoot ? 'Auto-starts & goes online when Windows boots' : 'Off — launch manually',
-              style: TextStyle(color: Colors.grey[700], fontSize: 9),
+              _startOnBoot ? 'Agent will auto-start globally' : 'Disabled (manual launch)',
+              style: const TextStyle(color: dnSubText, fontSize: 11),
             ),
           ])),
           Switch(
             value: _startOnBoot,
             onChanged: _setStartOnBoot,
-            activeThumbColor: Colors.purple,
-            inactiveThumbColor: Colors.grey[700],
-            inactiveTrackColor: Colors.white10,
+            activeColor: dnAccent,
+            inactiveTrackColor: dnBg,
           ),
         ]),
       ]),
@@ -644,18 +658,18 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
   Widget _statusRow(IconData icon, String label, String value, Color color, {String? subtitle}) {
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Container(
-        width: 32, height: 32,
-        decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-        child: Center(child: Icon(icon, color: color, size: 16)),
+        width: 36, height: 36,
+        decoration: BoxDecoration(color: dnBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: dnBorder)),
+        child: Center(child: Icon(icon, color: color, size: 18)),
       ),
-      const SizedBox(width: 12),
+      const SizedBox(width: 16),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 9, letterSpacing: 2, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 2),
-        Text(value, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Courier')),
+        Text(label, style: const TextStyle(color: dnSubText, fontSize: 9, letterSpacing: 1.5, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text(value, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold)),
         if (subtitle != null) ...[
           const SizedBox(height: 2),
-          Text(subtitle, style: TextStyle(color: Colors.grey[700], fontSize: 9)),
+          Text(subtitle, style: const TextStyle(color: dnSubText, fontSize: 11)),
         ],
       ])),
     ]);
@@ -663,16 +677,16 @@ class _DriveScreenState extends State<DriveScreen> with WindowListener {
 
   Widget _buildNoDrives() {
     return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(color: const Color(0xFF0A0A12), border: Border.all(color: Colors.white10), borderRadius: BorderRadius.circular(4)),
+      padding: const EdgeInsets.all(40),
+      decoration: BoxDecoration(color: dnSurface, border: Border.all(color: dnBorder), borderRadius: BorderRadius.circular(16)),
       child: Center(child: Column(children: [
-        Icon(Icons.storage, size: 40, color: Colors.grey[800]),
-        const SizedBox(height: 12),
-        Text('No drives detected', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-        const SizedBox(height: 12),
+        const Icon(Icons.storage_rounded, size: 48, color: dnBorder),
+        const SizedBox(height: 16),
+        const Text('No drives detected', style: TextStyle(color: dnSubText, fontSize: 14)),
+        const SizedBox(height: 16),
         OutlinedButton(
           onPressed: _loadData,
-          style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFFF4655)), foregroundColor: const Color(0xFFFF4655)),
+          style: OutlinedButton.styleFrom(side: const BorderSide(color: dnAccent), foregroundColor: dnAccent),
           child: const Text('Refresh'),
         ),
       ])),

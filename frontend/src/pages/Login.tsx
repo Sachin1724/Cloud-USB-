@@ -9,111 +9,100 @@ const Login: React.FC = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const isAgentMode = searchParams.get('agent') === 'true';
-
     const [error, setError] = useState('');
     const [agentStatus, setAgentStatus] = useState('');
 
-    // If in agent mode, show a banner
     useEffect(() => {
-        if (isAgentMode) {
-            setAgentStatus('FLUTTER AGENT MODE — Sign in to activate device sync');
-        }
+        if (isAgentMode) setAgentStatus('Agent Mode — Sign in to activate device sync');
     }, [isAgentMode]);
 
     const sendTokenToAgent = async (token: string, user: string) => {
         if (!isAgentMode) return;
         try {
-            setAgentStatus('SENDING TOKEN TO AGENT...');
+            setAgentStatus('Sending token to agent...');
             await fetch('http://localhost:9292/token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token, user }),
             });
-            setAgentStatus('✓ AGENT AUTHENTICATED — You can close this window');
+            setAgentStatus('✓ Agent authenticated — you can close this window');
         } catch {
-            // Agent server may have already closed, that's fine
-            setAgentStatus('✓ AUTHENTICATED');
+            setAgentStatus('✓ Authenticated');
         }
     };
 
     const handleGoogleSuccess = async (credentialResponse: any) => {
         setError('');
         try {
-            const res = await axios.post(`${API}/api/auth/login`, {
-                google_token: credentialResponse.credential
-            });
+            const res = await axios.post(`${API}/api/auth/login`, { google_token: credentialResponse.credential });
             if (res.data.token) {
                 localStorage.setItem('drivenet_token', res.data.token);
                 await sendTokenToAgent(res.data.token, res.data.user);
                 if (!isAgentMode) navigate('/dashboard');
             }
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Google Authentication Failed');
+            setError(err.response?.data?.error || 'Authentication failed. Please try again.');
         }
     };
 
     return (
-        <div className="bg-[#172535] dark:bg-[#0f1923] text-slate-900 dark:text-slate-100 min-h-screen flex flex-col overflow-hidden font-display">
-            {/* Background Layers */}
-            <div className="fixed inset-0 grid-bg opacity-40 pointer-events-none" style={{
-                backgroundImage: `linear-gradient(to right, rgba(255, 71, 87, 0.05) 1px, transparent 1px),
-                                    linear-gradient(to bottom, rgba(255, 71, 87, 0.05) 1px, transparent 1px)`,
-                backgroundSize: '40px 40px'
-            }}></div>
-            <div className="fixed inset-0 bg-gradient-to-tr from-[#0f1923] via-transparent to-primary/5 pointer-events-none"></div>
-
-            <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-primary/20 bg-[#0f1923]/80 backdrop-blur-md">
-                <div className="flex items-center gap-4">
-                    <div className="p-1 border border-primary text-primary">
-                        <span className="material-symbols-outlined text-2xl">shield</span>
-                    </div>
-                    <h2 className="text-xl font-bold tracking-widest uppercase">CLOUD USB <span className="text-primary">Command</span></h2>
-                </div>
-                <div className="hidden md:flex items-center gap-6 text-xs font-bold tracking-[0.2em] text-slate-400 uppercase">
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]"></span>
-                        <span>Cloud Relay Online</span>
-                    </div>
-                </div>
-            </header>
+        <div className="bg-dn-bg font-sans text-dn-text min-h-screen flex flex-col">
+            {/* Background ambient glow */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full blur-[120px]"
+                    style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)' }} />
+            </div>
 
             {agentStatus && (
-                <div className="relative z-10 text-center py-2 text-xs font-bold tracking-widest uppercase bg-primary/10 border-b border-primary/30 text-primary">
+                <div className="relative z-20 text-center py-3 text-xs font-bold uppercase tracking-widest border-b border-dn-accent/20 bg-dn-accent/5 text-dn-primary">
                     {agentStatus}
                 </div>
             )}
 
             <main className="relative z-10 flex-grow flex items-center justify-center p-6">
-                <div className="w-full max-w-md relative">
-                    {/* Decorative corners */}
-                    <div className="absolute -top-0.5 -left-0.5 w-5 h-5 border-t-2 border-l-2 border-primary z-20"></div>
-                    <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 border-b-2 border-r-2 border-primary z-20"></div>
-
-                    <div className="bg-[#1a1a1c]/90 dark:bg-[#0f1923]/90 backdrop-blur-xl border border-white/10 shadow-2xl p-8 rounded relative z-10">
-                        <div className="mb-8 border-b border-primary/20 pb-6 relative">
-                            <div className="flex justify-between items-start mb-2">
-                                <p className="text-[10px] tracking-[0.3em] text-primary font-bold uppercase">Authorization Layer 01</p>
-                                <span className="text-[10px] text-slate-500 font-mono">ID: VR-9921</span>
-                            </div>
-                            <h1 className="text-4xl font-black tracking-tighter uppercase italic">Secure <span className="text-primary">Gateway</span></h1>
-                            <p className="text-slate-400 text-sm mt-2 font-medium tracking-tight">AGENT AUTHENTICATION REQUIRED FOR UPLINK</p>
-                            <div className="absolute -bottom-[1px] left-0 w-1/3 h-[2px] bg-primary"></div>
+                <div className="w-full max-w-[400px]">
+                    {/* Logo Section */}
+                    <div className="flex flex-col items-center mb-12">
+                        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-dn-glow bg-gradient-to-br from-dn-accent to-dn-accent-container">
+                            <span className="material-symbols-outlined text-dn-bg text-3xl font-black">cloud_upload</span>
                         </div>
+                        <h1 className="text-3xl font-black tracking-tighter text-dn-text mb-2">Welcome back</h1>
+                        <p className="text-dn-subtext text-sm text-center">Enter the vault to access your private network</p>
+                    </div>
 
-                        {error && <div className="mb-6 text-primary text-xs font-bold bg-primary/10 border border-primary/20 p-3 rounded uppercase">{error}</div>}
+                    {/* Login Card */}
+                    <div className="glass-card rounded-2xl p-10 flex flex-col items-center">
+                        {error && (
+                            <div className="w-full mb-8 text-xs font-bold uppercase tracking-widest p-4 rounded-xl text-center border border-dn-error/20 bg-dn-error/5 text-dn-error">
+                                {error}
+                            </div>
+                        )}
 
-                        {/* Google Auth Option */}
-                        <div className="mb-8 flex flex-col items-center">
-                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500 font-bold mb-4">Fast Uplink</p>
+                        <div className="w-full flex justify-center">
                             <GoogleLogin
                                 onSuccess={handleGoogleSuccess}
-                                onError={() => setError('Google Log in failed')}
+                                onError={() => setError('Google sign in failed')}
                                 theme="filled_black"
                                 shape="pill"
+                                size="large"
                                 text="continue_with"
+                                width="320"
                             />
                         </div>
 
+                        <div className="mt-10 pt-8 border-t border-dn-border/10 w-full text-center">
+                            <p className="text-[10px] text-dn-muted uppercase tracking-widest font-bold leading-relaxed opacity-60">
+                                Protected by AES-256 military encryption
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="text-center mt-8">
+                        <button onClick={() => navigate('/')}
+                            className="text-xs font-bold uppercase tracking-widest text-dn-muted hover:text-dn-primary transition-colors flex items-center justify-center gap-2 mx-auto">
+                            <span className="material-symbols-outlined text-sm">arrow_back</span>
+                            Back to home
+                        </button>
                     </div>
                 </div>
             </main>

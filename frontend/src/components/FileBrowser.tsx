@@ -1,766 +1,297 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-interface FileItem { name: string; is_dir: boolean; size: number; modified: number; }
-interface SystemStats { cpu: number; ram: number; up: number; down: number; storageTotal: number; storageAvailable: number; }
-interface ActivityEntry { name: string; action: string; time: number; size: number; }
-type Tab = 'dashboard' | 'allfiles' | 'recent' | 'shared';
-type ViewMode = 'list' | 'grid';
-
-const RAW_API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-const API = RAW_API.endsWith('/') ? RAW_API.slice(0, -1) : RAW_API;
-
-// In-memory blob cache: path → objectURL (kept until page refresh)
-const blobCache = new Map<string, string>();
-const thumbCache = new Map<string, string>();
-
-function loadActivity(): ActivityEntry[] {
-    try { return JSON.parse(sessionStorage.getItem('dn_activity') || '[]'); } catch { return []; }
-}
-function saveActivity(a: ActivityEntry[]) {
-    try { sessionStorage.setItem('dn_activity', JSON.stringify(a.slice(0, 100))); } catch { }
+interface FileItem {
+  name: string;
+  is_dir: boolean;
+  size: number;
+  modified: string;
+  path: string;
+  drive?: string;
 }
 
 const FileBrowser: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<Tab>('dashboard');
-    const [currentPath, setCurrentPath] = useState('');
-    const [files, setFiles] = useState<FileItem[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [sysStats, setSysStats] = useState<SystemStats | null>(null);
-    const [agentOnline, setAgentOnline] = useState(false);
-    const [userEmail, setUserEmail] = useState('AGENT_ADMIN');
-    const [uploadProgress, setUploadProgress] = useState<{ [k: string]: number }>({});
-    const [activity, setActivity] = useState<ActivityEntry[]>(loadActivity);
-    const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-    const [viewMode, setViewMode] = useState<ViewMode>('list');
-    const [filter, setFilter] = useState('');
-    // Drive identity — email is the primary key, this shows all drives assigned to logged-in Gmail
-    const [agentInfo, setAgentInfo] = useState<{ drives: Array<{ drive: string; online: boolean }>; online: boolean } | null>(null);
-    const [selectedDrive, setSelectedDrive] = useState<string | null>(null);
-
-    // Preview
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-    const [previewType, setPreviewType] = useState<'image' | 'pdf' | 'video' | 'text' | null>(null);
-    const [previewText, setPreviewText] = useState<string>('');
-    const [videoQuality, setVideoQuality] = useState<'original' | 'low'>('original');
-    const [previewName, setPreviewName] = useState<string | null>(null);
-    const [previewLoading, setPreviewLoading] = useState(false);
-
+    const RAW_API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const API = RAW_API.endsWith('/') ? RAW_API.slice(0, -1) : RAW_API;
     const navigate = useNavigate();
-    const pollRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+    const location = useLocation();
 
-    const showToast = (msg: string, ok: boolean) => {
-        setToast({ msg, ok });
-        setTimeout(() => setToast(null), 3500);
-    };
+    const [files, setFiles] = useState<FileItem[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-    const authHeader = useCallback(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const currentPath = queryParams.get('path') || '';
+    const currentDrive = queryParams.get('drive') || '';
+
+    const fetchFiles = async () => {
+        setLoading(true);
+        setError('');
         const token = localStorage.getItem('drivenet_token');
-        return { Authorization: `Bearer ${token}` };
-    }, []);
-
-    // Fetches drive assignment for the logged-in Gmail — email is the primary key
-    const fetchAgentInfo = useCallback(async () => {
         try {
-            const res = await axios.get(`${API}/api/fs/me/agent`, { headers: authHeader() });
-            if (res.data) {
-                setAgentInfo(res.data);
-                // Auto-select first online drive
-                if (res.data.drives && res.data.drives.length > 0 && !selectedDrive) {
-                    const onlineDrive = res.data.drives.find((d: any) => d.online) || res.data.drives[0];
-                    setSelectedDrive(onlineDrive.drive);
-                    setCurrentPath(onlineDrive.drive.endsWith('\\') ? onlineDrive.drive : onlineDrive.drive + '\\');
-                }
-            }
-        } catch { /* silent */ }
-    }, [authHeader, selectedDrive]);
-
-    const addActivity = useCallback((entry: ActivityEntry) => {
-        setActivity(prev => {
-            const next = [entry, ...prev.slice(0, 99)];
-            saveActivity(next);
-            return next;
-        });
-    }, []);
-
-    const fetchFiles = useCallback(async (p: string, silent = false) => {
-        if (!silent) setLoading(true);
-        try {
-            const driveParam = selectedDrive ? `&drive=${encodeURIComponent(selectedDrive)}` : '';
-            const res = await axios.get(`${API}/api/fs/list?path=${encodeURIComponent(p)}${driveParam}`, { headers: authHeader() });
-            if (res.data?.items) {
-                setFiles(res.data.items);
-                setCurrentPath(res.data.path ?? p);
-                setAgentOnline(true);
-            }
-        } catch {
-            if (!silent) setAgentOnline(false);
-        } finally {
-            if (!silent) setLoading(false);
-        }
-    }, [authHeader, selectedDrive]);
-
-    const fetchStats = useCallback(async () => {
-        try {
-            const res = await axios.get(`${API}/api/fs/stats`, { headers: authHeader() });
-            if (res.data && !res.data.error) { setSysStats(res.data); setAgentOnline(true); }
-        } catch { setAgentOnline(false); }
-    }, [authHeader]);
-
-    // Real-time polling every 2s for fast sync
-    useEffect(() => {
-        const token = localStorage.getItem('drivenet_token');
-        if (token) {
-            try {
-                const p = JSON.parse(atob(token.split('.')[1]));
-                setUserEmail(p.user ?? 'AGENT_ADMIN');
-            } catch { }
-        }
-        fetchFiles('');
-        fetchStats();
-        fetchAgentInfo();
-
-        // File + stats: every 2s for fast sync
-        pollRef.current = setInterval(() => {
-            fetchFiles(currentPath, true);
-            fetchStats();
-        }, 2000);
-
-        // Drive status: every 3s (changes rarely, no need to hammer)
-        const agentPoll = setInterval(() => fetchAgentInfo(), 3000);
-
-        return () => { clearInterval(pollRef.current); clearInterval(agentPoll); };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    // Restart file poll whenever path changes (2s)
-    useEffect(() => {
-        clearInterval(pollRef.current);
-        pollRef.current = setInterval(() => fetchFiles(currentPath, true), 2000);
-        return () => clearInterval(pollRef.current);
-    }, [currentPath, fetchFiles]);
-
-    const formatBytes = (b: number) => {
-        if (!b || b <= 0) return '0 B';
-        const k = 1024, s = ['B', 'KB', 'MB', 'GB', 'TB'];
-        const i = Math.floor(Math.log(b) / Math.log(k));
-        return parseFloat((b / Math.pow(k, i)).toFixed(1)) + ' ' + s[i];
-    };
-
-    const formatDate = (ts: number) => {
-        if (!ts) return '—';
-        const d = new Date(ts);
-        return d.toLocaleDateString() + ' ' + d.toTimeString().slice(0, 8);
-    };
-
-    const getExt = (name: string) => name.split('.').pop()?.toLowerCase() ?? '';
-    const isImage = (name: string) => ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(getExt(name));
-    const isVideo = (name: string) => ['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(getExt(name));
-    const isPDF = (name: string) => getExt(name) === 'pdf';
-    const isText = (name: string) => ['txt', 'md', 'json', 'csv', 'js', 'ts', 'jsx', 'tsx', 'html', 'css', 'ini', 'yaml', 'yml'].includes(getExt(name));
-
-    const fileIcon = (file: FileItem) => {
-        if (file.is_dir) return 'folder';
-        const e = getExt(file.name);
-        const m: Record<string, string> = { jpg: 'image', jpeg: 'image', png: 'image', gif: 'image', webp: 'image', mp4: 'videocam', webm: 'videocam', mov: 'videocam', pdf: 'picture_as_pdf', zip: 'folder_zip', rar: 'folder_zip', mp3: 'music_note', wav: 'music_note', doc: 'description', docx: 'description', txt: 'description', xls: 'table_chart', xlsx: 'table_chart' };
-        return m[e] ?? 'insert_drive_file';
-    };
-
-    // Load/cache a blob URL for a file path
-    const getOrFetchBlob = async (rel: string): Promise<string | null> => {
-        if (blobCache.has(rel)) return blobCache.get(rel)!;
-        try {
-            const res = await axios.get(`${API}/api/fs/download?path=${encodeURIComponent(rel)}`, {
-                headers: authHeader(), responseType: 'blob'
+            const res = await axios.get(`${API}/api/fs/list`, {
+                headers: { Authorization: `Bearer ${token}` },
+                params: { path: currentPath, drive: currentDrive }
             });
-            const url = URL.createObjectURL(res.data);
-            blobCache.set(rel, url);
-            return url;
-        } catch { return null; }
-    };
-
-    useEffect(() => {
-        // Video quality selector is kept for UI compatibility.
-        // Video previews use authenticated blob downloads to avoid exposing JWTs in query params.
-    }, [videoQuality]);
-
-    const handleFileClick = async (file: FileItem) => {
-        if (file.is_dir) {
-            const newPath = currentPath ? `${currentPath}/${file.name}` : file.name;
-            fetchFiles(newPath);
-            return;
-        }
-        const rel = currentPath ? `${currentPath}/${file.name}` : file.name;
-        if (isImage(file.name) || isVideo(file.name) || isPDF(file.name) || isText(file.name)) {
-            setPreviewLoading(true);
-            setPreviewName(file.name);
-            setPreviewUrl(null);
-            setPreviewText('');
-
-            const isVid = isVideo(file.name);
-            const isTxt = isText(file.name);
-            setPreviewType(isImage(file.name) ? 'image' : isVid ? 'video' : isPDF(file.name) ? 'pdf' : 'text');
-
-            if (isVid) {
-                const url = await getOrFetchBlob(rel);
-                setPreviewUrl(url);
-                setPreviewLoading(false);
-            } else if (isTxt) {
-                try {
-                    const res = await axios.get(`${API}/api/fs/download?path=${encodeURIComponent(rel)}`, {
-                        headers: authHeader(), responseType: 'text'
-                    });
-                    setPreviewText(res.data);
-                } catch { setPreviewText('Error loading document content.'); }
-                setPreviewLoading(false);
-            } else {
-                const url = await getOrFetchBlob(rel);
-                setPreviewUrl(url);
-                setPreviewLoading(false);
-            }
-        } else {
-            // Download directly
-            const url = await getOrFetchBlob(rel);
-            if (url) {
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = file.name;
-                a.click();
-            }
-        }
-    };
-
-    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        setUploadProgress(p => ({ ...p, [file.name]: 0 }));
-        const CHUNK_SIZE = 1 * 1024 * 1024; // 1MB
-        const uploadId = window.crypto.randomUUID();
-
-        try {
-            // For zero-byte files
-            if (file.size === 0) {
-                await axios.post(`${API}/api/fs/upload_chunk`, {
-                    uploadId, path: currentPath, name: file.name, chunk: '', isFirst: true, isLast: true
-                }, { headers: authHeader() });
-            } else {
-                for (let i = 0; i < file.size; i += CHUNK_SIZE) {
-                    const chunkBlob = file.slice(i, i + CHUNK_SIZE);
-                    const isFirst = i === 0;
-                    const isLast = (i + CHUNK_SIZE) >= file.size;
-
-                    const base64 = await new Promise<string>((resolve) => {
-                        const reader = new FileReader();
-                        reader.onload = (ev) => resolve(ev.target?.result as string);
-                        reader.readAsDataURL(chunkBlob);
-                    });
-
-                    await axios.post(`${API}/api/fs/upload_chunk`, {
-                        uploadId, path: currentPath, name: file.name, chunk: base64, isFirst, isLast
-                    }, { headers: authHeader() });
-
-                    const pct = Math.min(100, Math.round(((i + CHUNK_SIZE) / file.size) * 100));
-                    setUploadProgress(p => ({ ...p, [file.name]: pct }));
-                }
-            }
-
-            setUploadProgress(p => { const n = { ...p }; delete n[file.name]; return n; });
-            addActivity({ name: file.name, action: 'UPLOADED', time: Date.now(), size: file.size });
-            showToast(`✓ ${file.name} uploaded`, true);
-            fetchFiles(currentPath);
+            setFiles(res.data.files || []);
         } catch (err: any) {
-            setUploadProgress(p => { const n = { ...p }; delete n[file.name]; return n; });
-            showToast('Upload failed — agent disconnected or network error', false);
-        }
-
-        e.target.value = '';
-    };
-
-    const handleDelete = async (file: FileItem, e?: React.MouseEvent) => {
-        if (e) e.stopPropagation();
-        if (!file.name || !confirm(`Delete "${file.name}"?`)) return;
-        const rel = currentPath ? `${currentPath}/${file.name}` : file.name;
-        try {
-            await axios.delete(`${API}/api/fs/delete?path=${encodeURIComponent(rel)}`, { headers: authHeader() });
-            addActivity({ name: file.name, action: 'DELETED', time: Date.now(), size: file.size });
-            showToast(`${file.name} deleted`, true);
-            fetchFiles(currentPath);
-        } catch { showToast('Delete failed', false); }
-    };
-
-    const navigateUp = () => {
-        if (!currentPath) return;
-        const normalized = currentPath.replace(/\//g, '\\');
-        const parts = normalized.split('\\').filter(Boolean);
-        if (parts.length <= 1) {
-            fetchFiles('');
-            return;
-        }
-        parts.pop();
-        fetchFiles(`${parts.join('\\')}\\`);
-    };
-
-    const handleLogout = () => { localStorage.removeItem('drivenet_token'); navigate('/'); };
-
-    const storageUsed = sysStats ? sysStats.storageTotal - sysStats.storageAvailable : 0;
-    const storagePct = sysStats && sysStats.storageTotal > 0 ? (storageUsed / sysStats.storageTotal) * 100 : 0;
-
-    const filteredFiles = files.filter(f => f.name.toLowerCase().includes(filter.toLowerCase()));
-
-    const NavBtn = ({ tab, icon, label }: { tab: Tab; icon: string; label: string }) => (
-        <button onClick={() => setActiveTab(tab)}
-            className={`w-full p-3 flex items-center gap-3 font-bold text-xs uppercase tracking-widest transition-all text-left rounded-sm
-        ${activeTab === tab ? 'bg-primary text-white shadow-[0_0_12px_rgba(255,70,85,0.3)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
-            <span className="material-symbols-outlined text-lg">{icon}</span>
-            {label}
-            {tab === 'recent' && activity.length > 0 && (
-                <span className="ml-auto bg-primary/80 text-white text-[8px] font-bold px-1.5 py-0.5 rounded">{activity.length}</span>
-            )}
-        </button>
-    );
-
-    const FileListRow = ({ file }: { file: FileItem }) => (
-        <tr className="border-b border-[#1a1a1a] hover:bg-white/[0.025] group transition-colors cursor-pointer" onClick={() => handleFileClick(file)}>
-            <td className="py-3 px-4">
-                <div className="flex items-center gap-3">
-                    <span className={`material-symbols-outlined text-lg ${file.is_dir ? 'text-primary' : 'text-slate-500'}`}>{fileIcon(file)}</span>
-                    <span className="text-slate-200 font-mono text-sm truncate max-w-[260px]">{file.name}</span>
-                </div>
-            </td>
-            <td className="py-3 px-4 text-slate-500 font-mono text-xs">{formatDate(file.modified)}</td>
-            <td className="py-3 px-4 text-slate-500 font-mono text-xs">{file.is_dir ? '—' : formatBytes(file.size)}</td>
-            <td className="py-3 px-4 text-slate-500 font-mono text-xs uppercase">{file.is_dir ? 'DIR' : (getExt(file.name) || 'FILE')}</td>
-            <td className="py-3 px-4 text-right" onClick={e => e.stopPropagation()}>
-                <button onClick={e => handleDelete(file, e)} className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-primary transition-all">
-                    <span className="material-symbols-outlined text-sm">delete</span>
-                </button>
-            </td>
-        </tr>
-    );
-
-    const getOrFetchThumb = async (rel: string): Promise<string | null> => {
-        if (thumbCache.has(rel)) return thumbCache.get(rel)!;
-        try {
-            const res = await axios.get(`${API}/api/fs/thumbnail?path=${encodeURIComponent(rel)}`, {
-                headers: authHeader(), responseType: 'blob'
-            });
-            const url = URL.createObjectURL(res.data);
-            thumbCache.set(rel, url);
-            return url;
-        } catch { return null; }
-    };
-
-    const FileGridCard = ({ file }: { file: FileItem }) => {
-        const rel = currentPath ? `${currentPath}/${file.name}` : file.name;
-        const [thumbSrc, setThumbSrc] = React.useState<string | null>(thumbCache.get(rel) ?? null);
-        const [imgLoaded, setImgLoaded] = React.useState(false);
-        const [imgError, setImgError] = React.useState(false);
-        const showThumb = isImage(file.name) && !imgError;
-
-        React.useEffect(() => {
-            if (showThumb && !thumbSrc) {
-                getOrFetchThumb(rel).then(setThumbSrc);
+            setError(err.response?.data?.error || 'Failed to fetch files');
+            if (err.response?.status === 401) {
+                localStorage.removeItem('drivenet_token');
+                navigate('/login');
             }
-        }, [showThumb, rel, thumbSrc]);
-
-        return (
-            <div className="bg-[#141414] border border-[#2d2d2d] hover:border-primary/40 transition-all cursor-pointer group relative overflow-hidden"
-                onClick={() => handleFileClick(file)}>
-                <div className="h-36 bg-[#0f0f0f] flex items-center justify-center overflow-hidden relative">
-                    {showThumb ? (
-                        <>
-                            {/* Blurred placeholder shows immediately while the real thumb loads */}
-                            {!imgLoaded && (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="w-6 h-6 border border-slate-700 border-t-primary rounded-full animate-spin" />
-                                </div>
-                            )}
-                            <img
-                                src={thumbSrc || undefined}
-                                alt={file.name}
-                                className={`w-full h-full object-cover transition-all duration-300 ${imgLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'
-                                    }`}
-                                onLoad={() => setImgLoaded(true)}
-                                onError={() => setImgError(true)}
-                                loading="lazy"
-                            />
-                        </>
-                    ) : (
-                        <span className={`material-symbols-outlined text-5xl ${file.is_dir ? 'text-primary/50' : 'text-slate-700'
-                            }`}>{fileIcon(file)}</span>
-                    )}
-                </div>
-                <div className="p-3">
-                    <p className="text-slate-200 text-xs font-mono truncate">{file.name}</p>
-                    <p className="text-slate-600 text-[10px] mt-1">{file.is_dir ? 'FOLDER' : formatBytes(file.size)}</p>
-                </div>
-                <button onClick={e => handleDelete(file, e)}
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 bg-black/70 text-slate-400 hover:text-primary p-1 transition-all">
-                    <span className="material-symbols-outlined text-sm">delete</span>
-                </button>
-            </div>
-        );
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const OfflineBanner = () => (
-        <div className="bg-[#141414] border border-primary/30 p-10 text-center rounded">
-            <span className="material-symbols-outlined text-5xl text-primary/40 mb-3 block">usb_off</span>
-            <p className="text-primary text-sm font-bold uppercase tracking-widest">Agent Offline</p>
-            <p className="text-slate-500 text-xs mt-2">Open the DriveNet Windows app, select your USB, and press GO ONLINE</p>
-        </div>
-    );
+    useEffect(() => {
+        fetchFiles();
+    }, [currentPath, currentDrive]);
 
-    const FileTable = ({ items }: { items: FileItem[] }) => (
-        <table className="w-full">
-            <thead><tr className="border-b border-[#2d2d2d] bg-[#0f0f0f]">
-                {['RESOURCE NAME', 'LAST MODIFIED', 'SIZE', 'TYPE', ''].map(h => (
-                    <th key={h} className="text-left py-3 px-4 text-[9px] font-bold tracking-[0.2em] text-slate-600 uppercase">{h}</th>
-                ))}
-            </tr></thead>
-            <tbody>
-                {loading ? <tr><td colSpan={5} className="text-center py-12 text-slate-700 text-xs uppercase tracking-widest">SCANNING...</td></tr>
-                    : items.length === 0 ? <tr><td colSpan={5} className="text-center py-12 text-slate-700 text-xs uppercase tracking-widest">NO FILES FOUND</td></tr>
-                        : items.map(f => <FileListRow key={f.name} file={f} />)}
-            </tbody>
-        </table>
-    );
+    const filteredFiles = useMemo(() => {
+        return files.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    }, [files, searchQuery]);
+
+    const handleNavigate = (item: FileItem) => {
+        if (item.is_dir) {
+            const newPath = item.path;
+            const newDrive = item.drive || currentDrive;
+            navigate(`?drive=${encodeURIComponent(newDrive)}&path=${encodeURIComponent(newPath)}`);
+        }
+    };
+
+    const breadcrumbs = useMemo(() => {
+        const parts = currentPath.split(/[/\\]/).filter(Boolean);
+        return [{ name: 'Home', path: '', drive: currentDrive }, ...parts.map((p, i) => ({
+            name: p,
+            path: parts.slice(0, i + 1).join('/'),
+            drive: currentDrive
+        }))];
+    }, [currentPath, currentDrive]);
+
+    const getFileIcon = (item: FileItem) => {
+        if (item.is_dir) return 'folder';
+        const ext = item.name.split('.').pop()?.toLowerCase();
+        if (['jpg', 'jpeg', 'png', 'svg', 'webp'].includes(ext!)) return 'image';
+        if (['mp4', 'mov', 'avi', 'mkv'].includes(ext!)) return 'video_file';
+        if (['pdf', 'doc', 'docx', 'txt'].includes(ext!)) return 'description';
+        if (['zip', 'rar', '7z', 'tar'].includes(ext!)) return 'inventory_2';
+        return 'insert_drive_file';
+    };
+
+    const formatSize = (bytes: number) => {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    };
 
     return (
-        <div className="flex h-screen bg-[#0e0e0e] text-slate-300 font-sans overflow-hidden">
-            <div className="absolute inset-0 pointer-events-none opacity-5 scanline z-50"></div>
-
-            {/* Toast */}
-            {toast && (
-                <div className={`fixed top-4 right-4 z-[200] px-5 py-3 text-sm font-bold uppercase tracking-widest border shadow-2xl animate-pulse-1
-          ${toast.ok ? 'bg-green-900/90 border-green-500/50 text-green-300' : 'bg-[#1a0a0a] border-primary text-primary'}`}>
-                    {toast.msg}
-                </div>
-            )}
-
+        <div className="flex min-h-screen bg-dn-bg overflow-hidden">
             {/* Sidebar */}
-            <aside className="w-60 bg-[#141414] border-r border-[#222] hidden md:flex flex-col z-20 shrink-0">
-                <div className="p-5 border-b border-[#222]">
-                    <div className="flex items-center gap-2 mb-1.5">
-                        <div className="w-1.5 h-6 bg-primary shrink-0"></div>
-                        <h2 className="text-xs font-black text-white uppercase tracking-[0.2em]">PROTOCOL: CLOUD</h2>
-                    </div>
-                    <div className="flex items-center gap-2 pl-3.5 mt-1">
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${agentOnline ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-red-500 animate-pulse'}`}></div>
-                        <p className="text-[9px] text-slate-500 uppercase tracking-widest">{agentOnline ? 'AGENT ONLINE · SYNCED' : 'AGENT OFFLINE'}</p>
+            <aside className="fixed left-0 top-0 h-screen w-[220px] z-50 glass-sidebar flex flex-col py-8 px-4 gap-10">
+                <div className="px-2">
+                    <span className="text-xl font-black tracking-tighter text-dn-text">DriveNet Explorer</span>
+                    <div className="flex items-center gap-3 mt-8 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
+                        <div className="w-8 h-8 rounded-full bg-dn-accent/20 flex items-center justify-center text-dn-accent font-bold text-xs uppercase">U</div>
+                        <div className="flex flex-col overflow-hidden">
+                            <span className="text-xs font-semibold truncate text-dn-text">User</span>
+                            <span className="text-[10px] text-dn-subtext uppercase tracking-wider font-bold">Pro Account</span>
+                        </div>
                     </div>
                 </div>
 
-                {/* Drive Identity Card — email is the primary key */}
-                {agentInfo && agentInfo.drives && agentInfo.drives.length > 0 && (
-                    <div className={`mx-3 mt-3 p-3 border text-[10px] font-mono rounded-sm ${agentInfo.online
-                        ? 'border-green-500/30 bg-green-500/5'
-                        : 'border-[#2d2d2d] bg-[#111]'
-                        }`}>
-                        <div className="flex items-center gap-1.5 mb-2">
-                            <span className="material-symbols-outlined text-sm text-primary">storage</span>
-                            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Drives</span>
-                        </div>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                            {agentInfo.drives.map((drive: any, idx: number) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => {
-                                        setSelectedDrive(drive.drive);
-                                        setCurrentPath(drive.drive.endsWith('\\') ? drive.drive : drive.drive + '\\');
-                                    }}
-                                    className={`px-2 py-1 rounded text-xs font-bold ${
-                                        selectedDrive === drive.drive 
-                                            ? 'bg-primary text-white' 
-                                            : 'bg-[#222] text-slate-300'
-                                    }`}
-                                >
-                                    <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${
-                                        drive.online ? 'bg-green-400' : 'bg-slate-500'
-                                    }`}></span>
-                                    {drive.drive.toUpperCase()}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <div className={`w-1.5 h-1.5 rounded-full ${agentInfo.online ? 'bg-green-400 shadow-[0_0_6px_#4ade80]' : 'bg-slate-600'
-                                }`}></div>
-                            <span className={`text-[9px] font-bold tracking-widest ${agentInfo.online ? 'text-green-400' : 'text-slate-600'
-                                }`}>
-                                {agentInfo.online ? 'ONLINE — ACCESS GRANTED' : 'OFFLINE — OPEN WINDOWS APP'}
-                            </span>
-                        </div>
-                    </div>
-                )}
-                {agentInfo && (!agentInfo.drives || agentInfo.drives.length === 0) && (
-                    <div className="mx-3 mt-3 p-3 border border-[#2d2d2d] bg-[#111] rounded-sm">
-                        <p className="text-slate-500 text-xs">NO DRIVES SET</p>
-                    </div>
-                )}
-                <nav className="flex-1 py-4 flex flex-col gap-1 px-3">
-                    <NavBtn tab="dashboard" icon="dashboard" label="Dashboard" />
-                    <NavBtn tab="allfiles" icon="folder_open" label="All Files" />
-                    <NavBtn tab="recent" icon="history" label="Recent Activity" />
-                    <NavBtn tab="shared" icon="share" label="Shared Comms" />
-                </nav>
-                <div className="p-5 border-t border-[#222] space-y-3">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-[#1a1a1a] border border-primary/40 flex items-center justify-center shrink-0">
-                            <span className="material-symbols-outlined text-xl text-slate-500">person</span>
-                        </div>
-                        <div className="min-w-0">
-                            <p className="text-xs font-black text-white uppercase tracking-widest truncate">{userEmail.split('@')[0]}</p>
-                            <p className="text-[9px] text-primary uppercase font-bold tracking-widest">RANK: RADIANT</p>
-                        </div>
-                    </div>
-                    <button onClick={handleLogout} className="w-full text-slate-500 border border-[#2d2d2d] hover:border-primary hover:text-primary transition-all p-2 flex justify-center items-center gap-2 font-bold text-[10px] uppercase tracking-widest">
-                        <span className="material-symbols-outlined text-xs">logout</span>
-                        DISCONNECT SESSION
+                <nav className="flex flex-col gap-1 flex-1">
+                    <button className="relative flex items-center gap-3 px-3 py-2.5 text-dn-text bg-dn-accent/10 active-nav-indicator rounded-lg transition-all scale-[0.98] text-sm font-medium">
+                        <span className="material-symbols-outlined text-dn-primary" style={{ fontVariationSettings: "'FILL' 1" }}>folder</span>
+                        <span>My Files</span>
                     </button>
+                    <button className="flex items-center gap-3 px-3 py-2.5 text-dn-subtext hover:bg-dn-surface-low hover:text-dn-text rounded-lg transition-colors text-sm font-medium">
+                        <span className="material-symbols-outlined">schedule</span>
+                        <span>Recent</span>
+                    </button>
+                    <button className="flex items-center gap-3 px-3 py-2.5 text-dn-subtext hover:bg-dn-surface-low hover:text-dn-text rounded-lg transition-colors text-sm font-medium">
+                        <span className="material-symbols-outlined">group</span>
+                        <span>Shared</span>
+                    </button>
+                    <button className="flex items-center gap-3 px-3 py-2.5 text-dn-subtext hover:bg-dn-surface-low hover:text-dn-text rounded-lg transition-colors text-sm font-medium">
+                        <span className="material-symbols-outlined">delete</span>
+                        <span>Trash</span>
+                    </button>
+                </nav>
+
+                <div className="mt-auto px-2">
+                    <button className="w-full dn-button-primary py-3 rounded-xl mb-4">Upgrade Storage</button>
+                    <div className="flex items-center gap-3 px-2 py-2 text-dn-subtext opacity-60">
+                        <span className="material-symbols-outlined text-sm">cloud_done</span>
+                        <span className="text-[11px] font-bold uppercase tracking-tight">Cloud Active</span>
+                    </div>
                 </div>
             </aside>
 
-            {/* Main */}
-            <main className="flex-1 flex flex-col h-screen overflow-y-auto bg-[#0e0e0e]">
+            {/* Main Content */}
+            <main className="flex-1 ml-[220px] h-screen flex flex-col relative">
                 {/* Header */}
-                <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between px-6 py-3 border-b border-[#222] bg-[#0e0e0e]/95 backdrop-blur gap-3">
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <div className="p-1 border border-primary/60"><span className="material-symbols-outlined text-primary text-lg">shield</span></div>
-                            <h1 className="text-sm font-black tracking-widest uppercase italic">CLOUDD<span className="text-primary">RIVE</span> MANAGER</h1>
-                            {agentOnline && <span className="text-[9px] font-bold tracking-widest text-green-400 border border-green-500/20 bg-green-500/5 px-2 py-0.5">SYNCED</span>}
+                <header className="sticky top-0 w-full z-40 bg-dn-bg/80 backdrop-blur-md flex justify-between items-center h-16 px-8 border-b border-dn-border/10">
+                    <div className="flex items-center gap-6 overflow-hidden">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-dn-accent whitespace-nowrap">All Files</span>
+                        <div className="h-4 w-px bg-dn-border/30 shrink-0" />
+                        <div className="flex items-center gap-2 text-xs font-medium text-dn-subtext overflow-hidden">
+                            {breadcrumbs.map((b, i) => (
+                                <React.Fragment key={i}>
+                                    <button 
+                                        onClick={() => navigate(`?drive=${encodeURIComponent(b.drive)}&path=${encodeURIComponent(b.path)}`)}
+                                        className={`hover:text-dn-text whitespace-nowrap ${i === breadcrumbs.length - 1 ? 'text-dn-text font-bold' : ''}`}
+                                    >
+                                        {b.name}
+                                    </button>
+                                    {i < breadcrumbs.length - 1 && <span className="material-symbols-outlined text-[14px]">chevron_right</span>}
+                                </React.Fragment>
+                            ))}
                         </div>
                     </div>
-                    <div className="flex gap-2 items-center">
-                        <input type="file" id="fileUpload" className="hidden" onChange={handleUpload} />
-                        <button onClick={() => document.getElementById('fileUpload')?.click()}
-                            className="bg-primary text-white px-5 py-2.5 font-bold text-xs uppercase tracking-widest hover:bg-[#ff3042] transition-colors flex items-center gap-2 btn-slanted">
-                            <span className="material-symbols-outlined text-sm">upload</span>
-                            UPLOAD DATA
-                        </button>
+
+                    <div className="flex items-center gap-4 flex-1 justify-end max-w-2xl">
+                        <div className="relative w-full max-w-md hidden md:block">
+                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-dn-muted text-sm">search</span>
+                            <input 
+                                className="w-full bg-dn-surface-lowest border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-1 focus:ring-dn-accent/30 transition-all placeholder:text-dn-muted/50 text-dn-text"
+                                placeholder="Search files, folders..."
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => navigate('/login')} className="p-2 text-dn-subtext hover:bg-dn-surface-high rounded-lg transition-all active:scale-95">
+                                <span className="material-symbols-outlined">logout</span>
+                            </button>
+                        </div>
                     </div>
                 </header>
 
-                {/* Upload progress */}
-                {Object.entries(uploadProgress).map(([name, pct]) => (
-                    <div key={name} className="bg-[#141414] border-b border-[#222] px-6 py-2 flex items-center gap-4">
-                        <span className="text-xs font-mono text-primary uppercase truncate flex-1">TRANSMITTING: {name}</span>
-                        <div className="w-40 h-1 bg-[#2d2d2d]"><div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }}></div></div>
-                        <span className="text-xs font-mono text-primary">{pct}%</span>
-                    </div>
-                ))}
-
-                <div className="flex-1 p-5 pb-10 space-y-6">
-
-                    {/* DASHBOARD */}
-                    {activeTab === 'dashboard' && (
-                        <>
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                <div className="bg-[#141414] border border-[#222] p-5">
-                                    <p className="text-[9px] text-slate-600 uppercase tracking-widest mb-2">Storage Capacity</p>
-                                    <p className="text-3xl font-black text-white">{formatBytes(storageUsed)}<span className="text-xs text-slate-500 ml-1">used</span></p>
-                                    <p className="text-xs text-slate-600 mt-0.5">of {formatBytes(sysStats?.storageTotal ?? 0)} • {formatBytes(sysStats?.storageAvailable ?? 0)} free</p>
-                                    <div className="mt-3 h-1 bg-[#2d2d2d]"><div className="h-full bg-primary" style={{ width: `${storagePct.toFixed(0)}%` }}></div></div>
-                                </div>
-                                <div className="bg-[#141414] border border-[#222] p-5">
-                                    <p className="text-[9px] text-slate-600 uppercase tracking-widest mb-2">Sync Frequency</p>
-                                    <p className="text-3xl font-black text-white">{sysStats ? Math.round((sysStats.up + sysStats.down) / 2) : '—'}<span className="text-xs text-slate-500 ml-1">ms / Realtime</span></p>
-                                    <p className={`text-[10px] font-bold uppercase tracking-widest mt-2 ${agentOnline ? 'text-green-400' : 'text-red-400'}`}>
-                                        ● {agentOnline ? 'OPTIMAL CONNECTION STATE' : 'AGENT DISCONNECTED'}
-                                    </p>
-                                </div>
-                                <div className="bg-[#141414] border border-[#222] p-5">
-                                    <p className="text-[9px] text-slate-600 uppercase tracking-widest mb-2">Activity Log</p>
-                                    <p className="text-3xl font-black text-white">{activity.length}<span className="text-xs text-slate-500 ml-1">Transfers</span></p>
-                                    <p className="text-[10px] text-slate-600 uppercase tracking-widest mt-2">SECURITY LEVEL: HIGH</p>
-                                </div>
-                            </div>
-
-                            {/* Live file browser */}
-                            <div className="bg-[#141414] border border-[#222]">
-                                <div className="px-5 py-3 border-b border-[#222] flex flex-wrap items-center gap-3">
-                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                        <span className="material-symbols-outlined text-slate-600 text-sm">search</span>
-                                        <span className="text-xs font-mono text-slate-500 uppercase tracking-widest truncate">
-                                            SCANNING: {currentPath ? currentPath.toUpperCase() : 'ROOT:/'}
-                                        </span>
-                                        {agentOnline && <span className="text-[8px] text-green-500 animate-pulse">● LIVE</span>}
-                                    </div>
-                                    {currentPath && (
-                                        <button onClick={navigateUp} className="text-slate-500 hover:text-primary text-xs flex items-center gap-1 border border-[#333] px-2 py-1 hover:border-primary/30">
-                                            <span className="material-symbols-outlined text-xs">arrow_back</span> BACK
-                                        </button>
-                                    )}
-                                </div>
-                                {!agentOnline ? <div className="p-8"><OfflineBanner /></div> : <FileTable items={filteredFiles} />}
-                            </div>
-                        </>
-                    )}
-
-                    {/* ALL FILES */}
-                    {activeTab === 'allfiles' && (
-                        <>
-                            <div className="flex flex-wrap items-center gap-3 justify-between">
-                                <div>
-                                    <h2 className="text-lg font-black uppercase tracking-widest text-white">ALL FILES</h2>
-                                    <p className="text-xs text-slate-600 font-mono mt-0.5">{currentPath ? `PATH: /${currentPath}` : 'PATH: ROOT:/'}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="FILTER FILES..." className="bg-[#141414] border border-[#333] text-slate-300 placeholder:text-slate-700 px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-primary/50 w-40" />
-                                    <button onClick={() => setViewMode('list')} className={`p-1.5 border ${viewMode === 'list' ? 'border-primary text-primary' : 'border-[#333] text-slate-600 hover:text-slate-300'}`}>
-                                        <span className="material-symbols-outlined text-sm">list</span>
-                                    </button>
-                                    <button onClick={() => setViewMode('grid')} className={`p-1.5 border ${viewMode === 'grid' ? 'border-primary text-primary' : 'border-[#333] text-slate-600 hover:text-slate-300'}`}>
-                                        <span className="material-symbols-outlined text-sm">grid_view</span>
-                                    </button>
-                                    {currentPath && (
-                                        <button onClick={navigateUp} className="text-xs font-mono text-slate-400 hover:text-primary flex items-center gap-1 border border-[#333] hover:border-primary/30 px-3 py-1.5">
-                                            <span className="material-symbols-outlined text-sm">arrow_back</span> BACK
-                                        </button>
-                                    )}
-                                    <button onClick={() => fetchFiles(currentPath)} className="text-xs font-mono text-slate-400 hover:text-primary flex items-center gap-1 border border-[#333] hover:border-primary/30 px-3 py-1.5">
-                                        <span className="material-symbols-outlined text-sm">refresh</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            {!agentOnline ? <OfflineBanner /> : viewMode === 'list' ? (
-                                <div className="bg-[#141414] border border-[#222]"><FileTable items={filteredFiles} /></div>
-                            ) : (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                                    {loading ? (
-                                        Array.from({ length: 10 }).map((_, i) => <div key={i} className="bg-[#141414] border border-[#222] h-44 animate-pulse" />)
-                                    ) : filteredFiles.length === 0 ? (
-                                        <div className="col-span-full text-center py-12 text-slate-700 text-xs uppercase tracking-widest">DRIVE IS EMPTY</div>
-                                    ) : filteredFiles.map(f => <FileGridCard key={f.name} file={f} />)}
-                                </div>
-                            )}
-                        </>
-                    )}
-
-                    {/* RECENT ACTIVITY */}
-                    {activeTab === 'recent' && (
-                        <>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h2 className="text-lg font-black uppercase tracking-widest text-white">RECENT ACTIVITY</h2>
-                                    <p className="text-xs text-slate-600 mt-0.5">Persisted for this browser session</p>
-                                </div>
-                                <button onClick={() => { setActivity([]); sessionStorage.removeItem('dn_activity'); }}
-                                    className="text-[10px] font-bold text-slate-500 hover:text-primary uppercase tracking-widest border border-[#2d2d2d] hover:border-primary/30 px-3 py-1.5 transition-all">
-                                    CLEAR LOG
+                {/* Workspace */}
+                <div className="flex-1 overflow-y-auto p-8 bg-dn-bg custom-scrollbar">
+                    {/* Toolbar */}
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-3">
+                            <div className="flex bg-dn-surface-low p-1 rounded-lg">
+                                <button 
+                                    onClick={() => setViewMode('grid')}
+                                    className={`flex items-center justify-center p-2 rounded-md ${viewMode === 'grid' ? 'bg-dn-surface-highest text-dn-primary shadow-sm' : 'text-dn-subtext hover:text-dn-text'}`}
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">grid_view</span>
+                                </button>
+                                <button 
+                                    onClick={() => setViewMode('list')}
+                                    className={`flex items-center justify-center p-2 rounded-md ${viewMode === 'list' ? 'bg-dn-surface-highest text-dn-primary shadow-sm' : 'text-dn-subtext hover:text-dn-text'}`}
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">list</span>
                                 </button>
                             </div>
-                            {activity.length === 0 ? (
-                                <div className="bg-[#141414] border border-[#222] p-12 text-center">
-                                    <span className="material-symbols-outlined text-4xl text-slate-800 mb-3 block">history</span>
-                                    <p className="text-slate-700 text-xs uppercase tracking-widest">NO TRANSFERS YET</p>
-                                    <p className="text-slate-800 text-xs mt-2">Upload or delete a file to see activity here</p>
+                            <div className="flex items-center gap-2 px-4 py-2 bg-dn-surface-low rounded-lg text-xs font-bold uppercase tracking-widest text-dn-subtext cursor-pointer hover:bg-dn-surface-high transition-colors">
+                                <span>Recent</span>
+                                <span className="material-symbols-outlined text-[18px]">expand_more</span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-dn-success/5 border border-dn-success/20 rounded-full">
+                            <span className="w-1.5 h-1.5 bg-dn-success rounded-full animate-pulse" />
+                            <span className="text-[9px] font-black uppercase tracking-widest text-dn-success">Tunnel Active</span>
+                        </div>
+                    </div>
+
+                    {loading ? (
+                        <div className="flex flex-col items-center justify-center h-64 gap-4">
+                            <div className="w-10 h-10 border-4 border-dn-accent/20 border-t-dn-accent rounded-full animate-spin" />
+                            <span className="text-xs font-bold uppercase tracking-widest text-dn-muted">Accessing Vault...</span>
+                        </div>
+                    ) : error ? (
+                        <div className="bg-dn-error/5 border border-dn-error/20 p-8 rounded-2xl text-center">
+                            <span className="material-symbols-outlined text-dn-error text-5xl mb-4">error</span>
+                            <h3 className="text-xl font-bold mb-2">Access Denied</h3>
+                            <p className="text-dn-subtext text-sm mb-6">{error}</p>
+                            <button onClick={fetchFiles} className="dn-button-secondary">Retry Connection</button>
+                        </div>
+                    ) : (
+                        <div className={viewMode === 'grid' 
+                            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"
+                            : "flex flex-col gap-2"
+                        }>
+                            {filteredFiles.map((file, idx) => (
+                                <div 
+                                    key={idx}
+                                    onClick={() => handleNavigate(file)}
+                                    className={`group relative bg-dn-surface-low rounded-xl transition-all duration-300 cursor-pointer overflow-hidden ${
+                                        viewMode === 'grid' 
+                                            ? 'p-5 border border-dn-border/5 hover:border-dn-accent/30 hover:shadow-dn-glow' 
+                                            : 'p-3 flex items-center justify-between border-b border-dn-border/10 hover:bg-dn-surface-high'
+                                    }`}
+                                >
+                                    {viewMode === 'grid' ? (
+                                        <>
+                                            <div className="flex items-start justify-between mb-4">
+                                                <div className={`p-3 rounded-xl ${file.is_dir ? 'bg-dn-accent/10' : 'bg-dn-surface-highest'}`}>
+                                                    <span className={`material-symbols-outlined text-3xl ${file.is_dir ? 'text-dn-accent' : 'text-dn-subtext'}`} style={{ fontVariationSettings: file.is_dir ? "'FILL' 1" : "" }}>
+                                                        {getFileIcon(file)}
+                                                    </span>
+                                                </div>
+                                                <button className="text-dn-muted opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <span className="material-symbols-outlined">more_vert</span>
+                                                </button>
+                                            </div>
+                                            <div>
+                                                <h3 className="text-dn-text font-semibold text-sm mb-1 truncate" title={file.name}>{file.name}</h3>
+                                                <p className="text-dn-subtext text-[10px] font-bold uppercase tracking-tight flex items-center gap-2">
+                                                    <span>{file.is_dir ? 'Folder' : formatSize(file.size)}</span>
+                                                    <span className="w-1 h-1 bg-dn-muted/30 rounded-full" />
+                                                    <span>{new Date(file.modified).toLocaleDateString()}</span>
+                                                </p>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="flex items-center gap-4 flex-1 overflow-hidden">
+                                                <span className={`material-symbols-outlined ${file.is_dir ? 'text-dn-accent' : 'text-dn-subtext'}`} style={{ fontVariationSettings: file.is_dir ? "'FILL' 1" : "" }}>
+                                                    {getFileIcon(file)}
+                                                </span>
+                                                <span className="text-sm font-medium truncate text-dn-text">{file.name}</span>
+                                            </div>
+                                            <div className="flex items-center gap-6 text-[10px] font-bold uppercase tracking-tight text-dn-subtext">
+                                                <span className="w-20 text-right">{file.is_dir ? '--' : formatSize(file.size)}</span>
+                                                <span className="w-24 text-right">{new Date(file.modified).toLocaleDateString()}</span>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
-                            ) : (
-                                <div className="bg-[#141414] border border-[#222]">
-                                    <table className="w-full">
-                                        <thead><tr className="border-b border-[#222] bg-[#0f0f0f]">
-                                            {['FILE', 'ACTION', 'TIME', 'SIZE'].map(h => (
-                                                <th key={h} className="text-left py-3 px-4 text-[9px] font-bold tracking-[0.2em] text-slate-600 uppercase">{h}</th>
-                                            ))}
-                                        </tr></thead>
-                                        <tbody>
-                                            {activity.map((a, i) => (
-                                                <tr key={i} className="border-b border-[#1a1a1a] hover:bg-white/[0.02]">
-                                                    <td className="py-3 px-4 font-mono text-sm text-slate-300 truncate max-w-[200px]">{a.name}</td>
-                                                    <td className="py-3 px-4">
-                                                        <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-1 ${a.action === 'UPLOADED' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                                                            {a.action}
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3 px-4 font-mono text-xs text-slate-500">{formatDate(a.time)}</td>
-                                                    <td className="py-3 px-4 font-mono text-xs text-slate-500">{formatBytes(a.size)}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                            ))}
+                            
+                            {filteredFiles.length === 0 && (
+                                <div className="col-span-full py-20 flex flex-col items-center justify-center opacity-40">
+                                    <span className="material-symbols-outlined text-7xl mb-4">folder_open</span>
+                                    <p className="text-sm font-bold uppercase tracking-widest text-dn-subtext">No files found in the vault</p>
                                 </div>
                             )}
-                        </>
-                    )}
-
-                    {/* SHARED COMMS */}
-                    {activeTab === 'shared' && (
-                        <>
-                            <h2 className="text-lg font-black uppercase tracking-widest text-white">SHARED COMMS</h2>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <div className="bg-[#141414] border border-[#222] p-6">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <span className="material-symbols-outlined text-primary">account_circle</span>
-                                        <h3 className="text-xs font-bold uppercase tracking-widest text-white">CONNECTED ACCOUNT</h3>
-                                    </div>
-                                    <p className="text-sm text-slate-300 font-mono">{userEmail}</p>
-                                    <p className="text-xs text-slate-600 mt-2">Google account is the access key for this USB drive</p>
-                                </div>
-                                <div className="bg-[#141414] border border-[#222] p-6">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <span className="material-symbols-outlined text-primary">link</span>
-                                        <h3 className="text-xs font-bold uppercase tracking-widest text-white">SHARE FILES</h3>
-                                    </div>
-                                    <p className="text-xs text-slate-500 mb-3">Browse to a file, click it, and generate a share link</p>
-                                    <button onClick={() => setActiveTab('allfiles')} className="text-xs font-bold text-primary border border-primary/30 px-4 py-2 hover:bg-primary/10 uppercase tracking-widest">
-                                        BROWSE FILES →
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="bg-[#141414] border border-[#222]/40 p-10 text-center">
-                                <span className="material-symbols-outlined text-5xl text-slate-800 mb-3 block">folder_shared</span>
-                                <p className="text-slate-700 text-xs uppercase tracking-widest">Shared links will appear here — coming soon</p>
-                            </div>
-                        </>
+                        </div>
                     )}
                 </div>
-            </main>
 
-            {/* Preview Modal */}
-            {(previewUrl || previewLoading) && (
-                <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-6"
-                    onClick={() => { setPreviewUrl(null); setPreviewType(null); setPreviewLoading(false); }}>
-                    <div className="max-w-5xl max-h-[90vh] w-full relative" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-4">
-                                <span className="text-xs font-mono text-slate-400 uppercase tracking-widest">{previewName}</span>
-                                {previewType === 'video' && (
-                                    <div className="flex bg-[#141414] border border-[#333] rounded overflow-hidden">
-                                        <button onClick={() => setVideoQuality('original')} className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest transition-colors ${videoQuality === 'original' ? 'bg-primary text-white' : 'text-slate-500 hover:text-white'}`}>Original Quality</button>
-                                        <button onClick={() => setVideoQuality('low')} className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest transition-colors ${videoQuality === 'low' ? 'bg-primary text-white' : 'text-slate-500 hover:text-white'}`}>Auto (Data Saver)</button>
-                                    </div>
-                                )}
-                            </div>
-                            <button onClick={() => { setPreviewUrl(null); setPreviewType(null); setPreviewLoading(false); }}
-                                className="text-slate-500 hover:text-white border border-[#333] hover:border-primary px-2 py-1 transition-all">
-                                <span className="material-symbols-outlined text-sm">close</span>
-                            </button>
+                {/* Storage Info Bento */}
+                <div className="px-8 pb-8 bg-dn-bg grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-dn-surface-low p-6 rounded-2xl border border-dn-border/5">
+                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-dn-subtext mb-4">Vault Integrity</h4>
+                        <div className="flex items-end gap-3 mb-2">
+                            <span className="text-3xl font-black text-dn-text">Secure</span>
                         </div>
-                        {previewLoading ? (
-                            <div className="h-64 flex items-center justify-center">
-                                <div className="text-center">
-                                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-                                    <p className="text-xs text-slate-500 uppercase tracking-widest">Loading from cache...</p>
-                                </div>
-                            </div>
-                        ) : (
-                            <>
-                                {previewType === 'image' && previewUrl && <img src={previewUrl} alt={previewName ?? ''} className="max-h-[80vh] max-w-full mx-auto object-contain" />}
-                                {previewType === 'video' && previewUrl && <video src={previewUrl} controls className="max-h-[80vh] max-w-full mx-auto" autoPlay />}
-                                {previewType === 'pdf' && previewUrl && <iframe src={previewUrl} className="w-full h-[80vh]" title={previewName ?? ''} />}
-                                {previewType === 'text' && (
-                                    <div className="bg-[#141414] border border-[#333] p-6 max-h-[80vh] overflow-y-auto">
-                                        <pre className="text-xs font-mono text-slate-300 w-full whitespace-pre-wrap">{previewText}</pre>
-                                    </div>
-                                )}
-                            </>
-                        )}
+                        <p className="text-[10px] text-dn-muted uppercase font-bold tracking-tight">Active End-to-End Tunneling</p>
                     </div>
                 </div>
-            )}
+            </main>
         </div>
     );
 };

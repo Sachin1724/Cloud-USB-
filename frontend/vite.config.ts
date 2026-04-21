@@ -7,8 +7,8 @@ export default defineConfig({
   server: {
     host: 'localhost',
     headers: {
-      
-      
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+      "Cross-Origin-Embedder-Policy": "unsafe-none"
     },
   },
 })

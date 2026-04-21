@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DriveNet | Your Files. Anywhere.</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-dim": "#131318",
+                    "surface-container": "#1f1f25",
+                    "tertiary-fixed-dim": "#ffb783",
+                    "background": "#131318",
+                    "on-primary-container": "#0d0096",
+                    "outline": "#908fa0",
+                    "secondary-fixed": "#e3e1ea",
+                    "on-tertiary-container": "#452000",
+                    "inverse-surface": "#e4e1e9",
+                    "on-tertiary-fixed-variant": "#703700",
+                    "surface-container-highest": "#35343a",
+                    "secondary": "#c7c5ce",
+                    "primary-container": "#8083ff",
+                    "on-tertiary-fixed": "#301400",
+                    "on-error-container": "#ffdad6",
+                    "surface-container-lowest": "#0e0e13",
+                    "on-surface": "#e4e1e9",
+                    "primary-fixed": "#e1e0ff",
+                    "error": "#ffb4ab",
+                    "secondary-fixed-dim": "#c7c5ce",
+                    "inverse-primary": "#494bd6",
+                    "tertiary-fixed": "#ffdcc5",
+                    "on-secondary-container": "#bcbbc3",
+                    "error-container": "#93000a",
+                    "tertiary-container": "#d97721",
+                    "on-primary": "#1000a9",
+                    "outline-variant": "#464554",
+                    "on-error": "#690005",
+                    "primary": "#c0c1ff",
+                    "tertiary": "#ffb783",
+                    "inverse-on-surface": "#303036",
+                    "on-secondary": "#303037",
+                    "surface-container-low": "#1b1b20",
+                    "on-secondary-fixed": "#1b1b21",
+                    "on-primary-fixed-variant": "#2f2ebe",
+                    "on-tertiary": "#4f2500",
+                    "surface-variant": "#35343a",
+                    "primary-fixed-dim": "#c0c1ff",
+                    "secondary-container": "#4b4b52",
+                    "on-secondary-fixed-variant": "#46464d",
+                    "on-surface-variant": "#c7c4d7",
+                    "on-primary-fixed": "#07006c",
+                    "surface-tint": "#c0c1ff",
+                    "surface": "#131318",
+                    "surface-bright": "#39383e",
+                    "on-background": "#e4e1e9",
+                    "surface-container-high": "#2a292f"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        }
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #0a0a0f; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(31, 31, 37, 0.4);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+        .glow-subtle {
+            box-shadow: 0 0 80px -20px rgba(128, 131, 255, 0.15);
+        }
+    </style>
+</head>
+<body class="text-on-surface overflow-x-hidden">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-[100] h-20 bg-slate-950/60 backdrop-blur-2xl bg-slate-900/20 shadow-2xl shadow-indigo-500/5 antialiased tracking-tight">
+<div class="flex justify-between items-center px-12 max-w-[1440px] mx-auto w-full h-full">
+<div class="text-2xl font-black tracking-tighter text-indigo-200 dark:text-indigo-100">DriveNet</div>
+<div class="hidden md:flex items-center gap-10">
+<a class="text-indigo-200 border-b-2 border-indigo-400 pb-1 font-medium text-sm transition-all duration-300" href="#">Solutions</a>
+<a class="text-slate-400 dark:text-slate-500 hover:text-indigo-200 font-medium text-sm transition-all duration-300" href="#">Security</a>
+<a class="text-slate-400 dark:text-slate-500 hover:text-indigo-200 font-medium text-sm transition-all duration-300" href="#">Pricing</a>
+</div>
+<div class="flex items-center gap-6">
+<button class="text-slate-400 dark:text-slate-500 hover:text-indigo-200 font-medium text-sm transition-all duration-300">Sign In</button>
+<button class="bg-primary-container text-on-primary-container px-6 py-2.5 rounded-full font-semibold text-sm hover:bg-primary transition-all duration-300 scale-95 active:scale-90">Get Started</button>
+</div>
+</div>
+</nav>
+<main class="relative pt-32">
+<!-- Background Ambient Glow -->
+<div class="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-primary-container/10 blur-[120px] rounded-full -z-10"></div>
+<!-- Hero Section -->
+<section class="max-w-7xl mx-auto px-12 text-center flex flex-col items-center">
+<div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-surface-container-highest/50 border border-outline-variant/20 mb-8">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-[0.75rem] font-semibold tracking-widest uppercase text-on-surface-variant">Private Network v2.4 Live</span>
+</div>
+<h1 class="text-6xl md:text-8xl font-black tracking-tighter leading-tight mb-8 bg-gradient-to-b from-white to-indigo-200 bg-clip-text text-transparent">
+                Your Files. <br/> Anywhere.
+            </h1>
+<p class="max-w-2xl text-lg md:text-xl text-on-surface-variant leading-relaxed mb-12">
+                Turn your PC into a private cloud. Access your entire file system from any browser, anywhere in the world with military-grade encryption.
+            </p>
+<div class="flex flex-wrap justify-center gap-6 mb-24">
+<button class="px-8 py-4 bg-[#6366F1] text-white rounded-full font-bold text-lg hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] transition-all duration-300 scale-100 active:scale-95">
+                    Connect Now
+                </button>
+<button class="px-8 py-4 border border-outline-variant/30 text-on-surface rounded-full font-bold text-lg hover:bg-white/5 transition-all duration-300 scale-100 active:scale-95">
+                    Download Agent
+                </button>
+</div>
+<!-- UI Preview - Glassmorphism -->
+<div class="w-full max-w-5xl glass-card rounded-[2rem] p-4 md:p-8 border border-outline-variant/10 glow-subtle mb-32 overflow-hidden relative">
+<div class="flex items-center gap-4 border-b border-outline-variant/10 pb-6 mb-6">
+<div class="flex gap-1.5">
+<div class="w-3 h-3 rounded-full bg-[#ff5f56]"></div>
+<div class="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
+<div class="w-3 h-3 rounded-full bg-[#27c93f]"></div>
+</div>
+<div class="flex-1 bg-surface-container-lowest/50 rounded-lg py-1.5 px-4 text-xs text-on-surface-variant/60 flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+                        https://drivenet.io/vault/desktop-pc
+                    </div>
+</div>
+<div class="grid grid-cols-12 gap-8 h-[400px]">
+<div class="col-span-3 border-r border-outline-variant/10 pr-4 hidden md:block">
+<ul class="space-y-2">
+<li class="bg-primary/10 text-primary px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-3">
+<span class="material-symbols-outlined text-[18px]">home</span> Dashboard
+                            </li>
+<li class="text-on-surface-variant hover:text-on-surface px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-3 transition-colors">
+<span class="material-symbols-outlined text-[18px]">folder</span> Root Directory
+                            </li>
+<li class="text-on-surface-variant hover:text-on-surface px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-3 transition-colors">
+<span class="material-symbols-outlined text-[18px]">cloud</span> Shared Links
+                            </li>
+</ul>
+</div>
+<div class="col-span-12 md:col-span-9">
+<div class="grid grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- File Card Mockups -->
+<div class="bg-surface-container-highest/30 p-4 rounded-xl border border-outline-variant/10 hover:border-primary/30 transition-all group">
+<div class="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-indigo-400">description</span>
+</div>
+<div class="text-sm font-semibold mb-1">Q4_Report.pdf</div>
+<div class="text-xs text-on-surface-variant">12.4 MB • 2h ago</div>
+</div>
+<div class="bg-surface-container-highest/30 p-4 rounded-xl border border-outline-variant/10 hover:border-primary/30 transition-all group">
+<div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary">image</span>
+</div>
+<div class="text-sm font-semibold mb-1">Architecture_Photos</div>
+<div class="text-xs text-on-surface-variant">42 Items • Yesterday</div>
+</div>
+<div class="bg-surface-container-highest/30 p-4 rounded-xl border border-outline-variant/10 hover:border-primary/30 transition-all group">
+<div class="w-12 h-12 bg-tertiary/10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-tertiary">code</span>
+</div>
+<div class="text-sm font-semibold mb-1">App_Source.zip</div>
+<div class="text-xs text-on-surface-variant">1.2 GB • 3d ago</div>
+</div>
+<div class="bg-surface-container-highest/30 p-4 rounded-xl border border-outline-variant/10 hover:border-primary/30 transition-all group opacity-50">
+<div class="w-12 h-12 bg-surface-container/50 rounded-lg flex items-center justify-center mb-4">
+<span class="material-symbols-outlined">video_file</span>
+</div>
+<div class="text-sm font-semibold mb-1">Demo_Reel.mp4</div>
+<div class="text-xs text-on-surface-variant">800 MB • 1w ago</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Status Bar -->
+<div class="absolute bottom-0 left-0 w-full px-8 py-3 bg-indigo-500/5 flex items-center justify-between text-[10px] uppercase tracking-widest font-bold text-indigo-300/60">
+<span>Active Connection: Desktop-WKS-01</span>
+<span class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Secure Tunnel Established
+                    </span>
+</div>
+</div>
+</section>
+<!-- Features Section -->
+<section class="max-w-7xl mx-auto px-12 pb-32" id="features">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Security Card -->
+<div class="glass-card p-8 rounded-xl border border-outline-variant/10 hover:border-primary/20 transition-all duration-500 group">
+<div class="mb-6 p-3 bg-surface-container-low rounded-lg w-fit group-hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-primary text-3xl" data-weight="fill">shield</span>
+</div>
+<h3 class="text-xl font-bold mb-4 tracking-tight">Security</h3>
+<p class="text-on-surface-variant leading-relaxed">
+                        End-to-end encrypted tunnels ensure your data never touches our servers. Your PC, your rules.
+                    </p>
+</div>
+<!-- Global Access Card -->
+<div class="glass-card p-8 rounded-xl border border-outline-variant/10 hover:border-primary/20 transition-all duration-500 group">
+<div class="mb-6 p-3 bg-surface-container-low rounded-lg w-fit group-hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-primary text-3xl" data-weight="fill">language</span>
+</div>
+<h3 class="text-xl font-bold mb-4 tracking-tight">Global Access</h3>
+<p class="text-on-surface-variant leading-relaxed">
+                        No matter where you are, connect via any web browser. No complicated VPN setup required.
+                    </p>
+</div>
+<!-- Real-time Sync Card -->
+<div class="glass-card p-8 rounded-xl border border-outline-variant/10 hover:border-primary/20 transition-all duration-500 group">
+<div class="mb-6 p-3 bg-surface-container-low rounded-lg w-fit group-hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-primary text-3xl" data-weight="fill">sync</span>
+</div>
+<h3 class="text-xl font-bold mb-4 tracking-tight">Real-time Sync</h3>
+<p class="text-on-surface-variant leading-relaxed">
+                        Instant file indexing and high-speed streaming for large media assets straight from your hardware.
+                    </p>
+</div>
+</div>
+</section>
+<!-- Stats / Proof Section (Visual Flair) -->
+<section class="max-w-7xl mx-auto px-12 pb-32">
+<div class="bg-surface-container-low rounded-[2.5rem] p-12 flex flex-col md:flex-row justify-around items-center border border-outline-variant/5">
+<div class="text-center mb-8 md:mb-0">
+<div class="text-5xl font-black text-primary mb-2 tracking-tighter">0%</div>
+<p class="text-xs uppercase tracking-widest font-semibold text-on-surface-variant">Cloud Storage Fees</p>
+</div>
+<div class="w-px h-12 bg-outline-variant/10 hidden md:block"></div>
+<div class="text-center mb-8 md:mb-0">
+<div class="text-5xl font-black text-primary mb-2 tracking-tighter">AES-256</div>
+<p class="text-xs uppercase tracking-widest font-semibold text-on-surface-variant">Native Encryption</p>
+</div>
+<div class="w-px h-12 bg-outline-variant/10 hidden md:block"></div>
+<div class="text-center">
+<div class="text-5xl font-black text-primary mb-2 tracking-tighter">&lt; 10ms</div>
+<p class="text-xs uppercase tracking-widest font-semibold text-on-surface-variant">Average Latency</p>
+</div>
+</div>
+</section>
+<!-- CTA Section -->
+<section class="pb-40 text-center px-12">
+<div class="relative py-24 overflow-hidden rounded-[3rem] bg-indigo-900/10 border border-indigo-500/10">
+<div class="absolute inset-0 bg-gradient-to-t from-transparent to-indigo-500/5 pointer-events-none"></div>
+<h2 class="text-4xl md:text-5xl font-black tracking-tight mb-8 relative z-10">Ready to take control of your data?</h2>
+<button class="relative z-10 px-10 py-5 bg-primary-container text-on-primary-container rounded-full font-bold text-xl hover:bg-primary transition-all duration-300 scale-100 active:scale-95 shadow-xl shadow-indigo-500/20">
+                    Get Started for Free
+                </button>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full py-16 border-t border-slate-800/30 bg-slate-950">
+<div class="flex flex-col md:flex-row justify-between items-center px-12 max-w-7xl mx-auto gap-8">
+<div class="text-indigo-100 font-bold tracking-widest uppercase">DriveNet</div>
+<div class="flex flex-wrap justify-center gap-10">
+<a class="font-['Inter'] text-[0.75rem] uppercase tracking-widest font-semibold text-slate-600 hover:text-indigo-100 transition-colors duration-200" href="#">Privacy Policy</a>
+<a class="font-['Inter'] text-[0.75rem] uppercase tracking-widest font-semibold text-slate-600 hover:text-indigo-100 transition-colors duration-200" href="#">Service Terms</a>
+<a class="font-['Inter'] text-[0.75rem] uppercase tracking-widest font-semibold text-slate-600 hover:text-indigo-100 transition-colors duration-200" href="#">Infrastructure</a>
+<a class="font-['Inter'] text-[0.75rem] uppercase tracking-widest font-semibold text-slate-600 hover:text-indigo-100 transition-colors duration-200" href="#">Documentation</a>
+</div>
+<p class="font-['Inter'] text-[0.75rem] uppercase tracking-widest font-semibold text-indigo-300 opacity-80">
+                © 2024 DriveNet. Your data, evolved.
+            </p>
+</div>
+</footer>
+</body></html>
