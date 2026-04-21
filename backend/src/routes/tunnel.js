@@ -34,6 +34,32 @@ router.get('/me/agent', (req, res) => {
     });
 });
 
+router.get('/me/recent', (req, res) => {
+    const email = req.user?.user;
+    if (!email) return res.status(401).json({ error: 'Unidentified User' });
+    return tunnelBroker.createProxyHandler('fs:recent')(req, res);
+});
+
+router.get('/share/links', (req, res) => {
+    const email = req.user?.user;
+    if (!email) return res.status(401).json({ error: 'Unidentified User' });
+    const links = tunnelBroker.getSharedLinks(email);
+    return res.json({ items: links });
+});
+
+router.get('/share/metadata', (req, res) => {
+    const { token } = req.query;
+    if (!token) return res.status(400).json({ error: 'token required' });
+    const link = tunnelBroker.sharedLinks.get(token as string);
+    if (!link) return res.status(404).json({ error: 'Link expired or invalid' });
+    return res.json({ 
+        name: link.path.split(/[/\\]/).pop(),
+        path: link.path,
+        drive: link.drive,
+        user: link.email
+    });
+});
+
 router.post('/me/set-active-drive', express.json(), (req, res) => {
     const email = req.user?.user;
     if (!email) return res.status(401).json({ error: 'Unidentified User' });
@@ -114,11 +140,15 @@ router.get('/share', (req, res) => {
         drive
     }, jwtSecret, { expiresIn: '15m' });
 
+    // Register share in broker for view tracking
+    tunnelBroker.registerSharedLink(token, req.user?.user, path, drive);
+
     const baseUrl = process.env.PUBLIC_API_URL ||
         `${req.protocol}://${req.get('host')}`;
 
     const url = `${baseUrl.replace(/\/$/, '')}/api/fs/download?path=${encodeURIComponent(path)}&drive=${encodeURIComponent(drive)}&token=${encodeURIComponent(token)}`;
-    return res.json({ url, expiresIn: '15m', path, drive });
+    const viewUrl = `${baseUrl.replace(/\/$/, '')}/s/${encodeURIComponent(token)}`;
+    return res.json({ url, viewUrl, expiresIn: '15m', path, drive });
 });
 
 // ─── REGULAR UPLOAD ───────────────────────────────────────────────────────────

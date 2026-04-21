@@ -80,7 +80,7 @@ const Dashboard: React.FC = () => {
     return (
         <div className="flex min-h-screen bg-dn-bg overflow-hidden text-dn-text">
             {/* Sidebar (Global Stitch Shell) */}
-            <aside className="fixed left-0 top-0 h-screen w-[220px] z-50 glass-sidebar flex flex-col py-8 px-4 gap-10">
+            <aside className="fixed left-0 top-0 h-screen w-[200px] z-50 glass-sidebar flex flex-col py-8 px-4 gap-10">
                 <div className="px-2">
                     <span 
                         className="text-xl font-black tracking-tighter text-dn-text cursor-pointer"
@@ -120,16 +120,37 @@ const Dashboard: React.FC = () => {
                         <span className={`material-symbols-outlined ${location.pathname.includes('/files') ? 'text-dn-primary' : ''}`} style={{ fontVariationSettings: location.pathname.includes('/files') ? "'FILL' 1" : "" }}>folder</span>
                         <span>My Vault</span>
                     </button>
-                    <button className="flex items-center gap-3 px-3 py-2.5 text-dn-subtext hover:bg-dn-surface-low hover:text-dn-text rounded-lg transition-colors text-sm font-medium">
-                        <span className="material-symbols-outlined">schedule</span>
+                    <button 
+                        onClick={() => navigate('/dashboard/recent')}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium ${
+                            location.pathname.includes('/recent') 
+                                ? 'text-dn-text bg-dn-accent/10 active-nav-indicator scale-[0.98]' 
+                                : 'text-dn-subtext hover:bg-dn-surface-low hover:text-dn-text'
+                        }`}
+                    >
+                        <span className={`material-symbols-outlined ${location.pathname.includes('/recent') ? 'text-dn-primary' : ''}`} style={{ fontVariationSettings: location.pathname.includes('/recent') ? "'FILL' 1" : "" }}>schedule</span>
                         <span>Recent</span>
                     </button>
-                    <button className="flex items-center gap-3 px-3 py-2.5 text-dn-subtext hover:bg-dn-surface-low hover:text-dn-text rounded-lg transition-colors text-sm font-medium">
-                        <span className="material-symbols-outlined">group</span>
+                    <button 
+                        onClick={() => navigate('/dashboard/shared')}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium ${
+                            location.pathname.includes('/shared') 
+                                ? 'text-dn-text bg-dn-accent/10 active-nav-indicator scale-[0.98]' 
+                                : 'text-dn-subtext hover:bg-dn-surface-low hover:text-dn-text'
+                        }`}
+                    >
+                        <span className={`material-symbols-outlined ${location.pathname.includes('/shared') ? 'text-dn-primary' : ''}`} style={{ fontVariationSettings: location.pathname.includes('/shared') ? "'FILL' 1" : "" }}>group</span>
                         <span>Shared</span>
                     </button>
-                    <button className="flex items-center gap-3 px-3 py-2.5 text-dn-subtext hover:bg-dn-surface-low hover:text-dn-text rounded-lg transition-colors text-sm font-medium">
-                        <span className="material-symbols-outlined">delete</span>
+                    <button 
+                        onClick={() => navigate('/dashboard/trash')}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium ${
+                            location.pathname.includes('/trash') 
+                                ? 'text-dn-text bg-dn-accent/10 active-nav-indicator scale-[0.98]' 
+                                : 'text-dn-subtext hover:bg-dn-surface-low hover:text-dn-text'
+                        }`}
+                    >
+                        <span className={`material-symbols-outlined ${location.pathname.includes('/trash') ? 'text-dn-primary' : ''}`} style={{ fontVariationSettings: location.pathname.includes('/trash') ? "'FILL' 1" : "" }}>delete</span>
                         <span>Trash</span>
                     </button>
                 </nav>
@@ -159,7 +180,7 @@ const Dashboard: React.FC = () => {
             </aside>
 
             {/* Main Content Area */}
-            <main className="flex-1 ml-[220px] h-screen flex flex-col relative">
+            <main className="flex-1 ml-[200px] h-screen flex flex-col relative">
                 <Outlet context={{ agent, user, fetchData }} />
             </main>
         </div>

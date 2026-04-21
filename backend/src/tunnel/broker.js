@@ -8,7 +8,8 @@ class TunnelBroker {
         this.pendingRequests = new Map(); // requestId → pending HTTP response
         // Persists drive info per user — email is the primary key
         // agentInfo stores: { email, drives: [{drive, online, lastSeen}], lastSeen }
-        this.agentInfo = new Map();    
+        this.agentInfo = new Map();
+        this.sharedLinks = new Map(); // token -> { email, path, drive, views, createdAt }
     }
 
     // Get agent info with all drives
@@ -211,17 +212,48 @@ class TunnelBroker {
         });
     }
 
+    registerSharedLink(token, email, path, drive) {
+        this.sharedLinks.set(token, {
+            email,
+            path,
+            drive,
+            views: 0,
+            createdAt: new Date().toISOString()
+        });
+    }
+
+    incrementShareView(token) {
+        const link = this.sharedLinks.get(token);
+        if (link) {
+            link.views++;
+            return link;
+        }
+        return null;
+    }
+
+    getSharedLinks(email) {
+        return Array.from(this.sharedLinks.entries())
+            .filter(([_, val]) => val.email === email)
+            .map(([token, val]) => ({ token, ...val }));
+    }
+
     // Specifically for HTTP routes
     createProxyHandler(action) {
         return async (req, res) => {
             try {
                 // Get the drive from query parameter
                 const drive = req.query.drive || req.body?.drive;
+                const token = req.query.token || req.body?.token;
                 
                 // SECURITY: Route exactly to the agent associated with the requesting user
                 const agentId = req.user?.g_uid || req.user?.user;
                 if (!agentId) return res.status(401).json({ error: 'Unidentified User Request' });
                 const requestId = crypto.randomUUID();
+
+                // Track share views if token present
+                if (token && action === 'fs:download') {
+                    this.incrementShareView(token);
+                }
 
                 const ws = this.agents.get(agentId);
                 if (!ws || ws.readyState !== 1) {

@@ -25,12 +25,12 @@
   }
 
   .dn-button-primary {
-    @apply bg-dn-accent-container text-dn-bg px-6 py-2.5 rounded-full font-bold text-sm hover:bg-dn-primary transition-all duration-300 active:scale-95 shadow-lg;
-    box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+    @apply bg-dn-accent-container text-dn-bg px-5 py-2 rounded-full font-bold text-xs hover:bg-dn-primary transition-all duration-300 active:scale-95 shadow-lg;
+    box-shadow: 0 8px 12px -3px rgba(99, 102, 241, 0.3);
   }
 
   .dn-button-secondary {
-    @apply border border-dn-border shadow-none text-dn-text px-6 py-2.5 rounded-full font-bold text-sm hover:bg-white/5 transition-all duration-300 active:scale-95;
+    @apply border border-dn-border shadow-none text-dn-text px-5 py-2 rounded-full font-bold text-xs hover:bg-white/5 transition-all duration-300 active:scale-95;
   }
 
   .text-gradient {

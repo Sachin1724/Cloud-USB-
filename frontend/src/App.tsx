@@ -5,6 +5,10 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import FileBrowser from './components/FileBrowser';
+import SharedView from './pages/SharedView';
+import Recent from './pages/Recent';
+import Shared from './pages/Shared';
+import Trash from './pages/Trash';
 
 // Auth guard: redirect to login if no token
 function RequireAuth({ children }: { children: React.ReactElement }) {
@@ -32,9 +36,13 @@ function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<RedirectIfAuth><Login /></RedirectIfAuth>} />
+          <Route path="/s/:token" element={<SharedView />} />
           <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>}>
             <Route index element={<FileBrowser />} />
             <Route path="files" element={<FileBrowser />} />
+            <Route path="recent" element={<Recent />} />
+            <Route path="shared" element={<Shared />} />
+            <Route path="trash" element={<Trash />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

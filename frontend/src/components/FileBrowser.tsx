@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { useNavigate, useLocation, useOutletContext } from 'react-router-dom';
+import FileViewer from './FileViewer';
+import { toast } from 'react-hot-toast'; // Assuming we want some notification
 
 interface FileItem {
   name: string;
@@ -29,6 +31,8 @@ const FileBrowser: React.FC = () => {
     const [error, setError] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
+    const [sharingId, setSharingId] = useState<string | null>(null);
 
     const queryParams = new URLSearchParams(location.search);
     const currentPath = queryParams.get('path') || '';
@@ -76,10 +80,25 @@ const FileBrowser: React.FC = () => {
 
     const handleNavigate = (item: FileItem) => {
         if (item.is_dir) {
-            // FIX: Construct the new path by appending item.name to currentPath
             const newPath = currentPath ? `${currentPath}/${item.name}` : item.name;
             const newDrive = item.drive || currentDrive;
             navigate(`?drive=${encodeURIComponent(newDrive)}&path=${encodeURIComponent(newPath)}`);
+        } else {
+            setPreviewFile({ ...item, drive: currentDrive });
+        }
+    };
+
+    const handleShare = async (item: FileItem) => {
+        const token = localStorage.getItem('drivenet_token');
+        try {
+            const res = await axios.get(`${API}/api/fs/share`, {
+                headers: { Authorization: `Bearer ${token}` },
+                params: { path: currentPath ? `${currentPath}/${item.name}` : item.name, drive: currentDrive }
+            });
+            navigator.clipboard.writeText(res.data.viewUrl);
+            alert('Share link copied to clipboard!');
+        } catch (err) {
+            alert('Failed to generate share link');
         }
     };
 
@@ -113,31 +132,31 @@ const FileBrowser: React.FC = () => {
     return (
         <div className="flex-1 flex flex-col h-full overflow-hidden">
             {/* Header (Consolidated) */}
-            <header className="sticky top-0 w-full z-40 bg-dn-bg/80 backdrop-blur-md flex justify-between items-center h-16 px-8 border-b border-dn-border/10">
-                <div className="flex items-center gap-6 overflow-hidden">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-dn-accent whitespace-nowrap">File Browser</span>
-                    <div className="h-4 w-px bg-dn-border/30 shrink-0" />
-                    <div className="flex items-center gap-2 text-xs font-medium text-dn-subtext overflow-hidden">
+            <header className="sticky top-0 w-full z-40 bg-dn-bg/80 backdrop-blur-md flex justify-between items-center h-14 px-6 border-b border-dn-border/5">
+                <div className="flex items-center gap-4 overflow-hidden">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-dn-accent whitespace-nowrap">Cloud Store</span>
+                    <div className="h-3 w-px bg-dn-border/20 shrink-0" />
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-dn-subtext overflow-hidden">
                         {breadcrumbs.map((b, i) => (
                             <React.Fragment key={i}>
                                 <button 
                                     onClick={() => navigate(`?drive=${encodeURIComponent(b.drive)}&path=${encodeURIComponent(b.path)}`)}
-                                    className={`hover:text-dn-text whitespace-nowrap transition-colors ${i === breadcrumbs.length - 1 ? 'text-dn-text font-bold' : ''}`}
+                                    className={`hover:text-dn-text whitespace-nowrap transition-colors ${i === breadcrumbs.length - 1 ? 'text-dn-text font-black' : 'opacity-60'}`}
                                 >
                                     {b.name}
                                 </button>
-                                {i < breadcrumbs.length - 1 && <span className="material-symbols-outlined text-[14px] opacity-40">chevron_right</span>}
+                                {i < breadcrumbs.length - 1 && <span className="material-symbols-outlined text-[12px] opacity-20">chevron_right</span>}
                             </React.Fragment>
                         ))}
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4 flex-1 justify-end max-w-2xl">
-                    <div className="relative w-full max-w-md hidden md:block">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-dn-muted text-sm">search</span>
+                <div className="flex items-center gap-4 flex-1 justify-end max-w-lg">
+                    <div className="relative w-full hidden md:block">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-dn-muted text-xs opacity-50">search</span>
                         <input 
-                            className="w-full bg-dn-surface-lowest border border-dn-border/10 rounded-full py-2 pl-10 pr-4 text-xs focus:ring-1 focus:ring-dn-accent/30 transition-all placeholder:text-dn-muted/50 text-dn-text"
-                            placeholder="Search in current folder..."
+                            className="w-full bg-dn-surface-lowest/50 border border-dn-border/5 rounded-full py-1.5 pl-9 pr-4 text-[11px] focus:ring-1 focus:ring-dn-accent/30 transition-all placeholder:text-dn-muted/40 text-dn-text"
+                            placeholder="Find items..."
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -230,13 +249,16 @@ const FileBrowser: React.FC = () => {
                                 {viewMode === 'grid' ? (
                                     <>
                                         <div className="flex items-start justify-between mb-4">
-                                            <div className={`p-4 rounded-2xl ${file.is_dir ? 'bg-dn-accent/10' : 'bg-dn-surface-highest'}`}>
-                                                <span className={`material-symbols-outlined text-4xl ${file.is_dir ? 'text-dn-accent' : 'text-dn-subtext'}`} style={{ fontVariationSettings: file.is_dir ? "'FILL' 1" : "" }}>
+                                            <div className={`p-3 rounded-xl ${file.is_dir ? 'bg-dn-accent/5' : 'bg-dn-surface-highest'}`}>
+                                                <span className={`material-symbols-outlined text-3xl ${file.is_dir ? 'text-dn-accent' : 'text-dn-subtext'}`} style={{ fontVariationSettings: file.is_dir ? "'FILL' 1" : "" }}>
                                                     {getFileIcon(file)}
                                                 </span>
                                             </div>
-                                            <button className="text-dn-muted opacity-0 group-hover:opacity-100 transition-opacity p-1">
-                                                <span className="material-symbols-outlined text-lg">more_vert</span>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleShare(file); }}
+                                                className="text-dn-muted hover:text-dn-accent transition-colors p-1"
+                                            >
+                                                <span className="material-symbols-outlined text-lg">share</span>
                                             </button>
                                         </div>
                                         <div>
@@ -275,19 +297,16 @@ const FileBrowser: React.FC = () => {
                 )}
             </div>
 
-            {/* Storage Info Bento (Optional Bottom Row) */}
-            {currentDrive && !loading && files.length > 0 && (
-                <div className="px-8 pb-8 bg-dn-bg grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div className="bg-dn-surface-low p-6 rounded-3xl border border-dn-border/5 group hover:border-dn-accent/20 transition-all">
-                        <h4 className="text-[10px] font-black uppercase tracking-widest text-dn-subtext mb-4 opacity-60">Sync Integrity</h4>
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-dn-success/10 text-dn-success">
-                                <span className="material-symbols-outlined text-sm">verified_user</span>
-                            </div>
-                            <span className="text-lg font-black text-dn-text">Encrypted</span>
-                        </div>
-                    </div>
-                </div>
+            {/* File Preview */}
+            {previewFile && (
+                <FileViewer 
+                    file={{
+                        ...previewFile,
+                        drive: currentDrive,
+                        path: currentPath ? `${currentPath}/${previewFile.name}` : previewFile.name
+                    }}
+                    onClose={() => setPreviewFile(null)}
+                />
             )}
         </div>
     );

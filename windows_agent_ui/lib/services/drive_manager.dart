@@ -108,6 +108,8 @@ class DriveManager {
         return await _searchFiles(payload['q'] as String? ?? payload['query'] as String? ?? '', payload['path'] as String?, driveOverride: driveOverride);
       case 'fs:trash':
         return await _moveToTrash(payload['path'] as String?, driveOverride: driveOverride);
+      case 'fs:recent':
+        return await _listFilesRecent(driveOverride: driveOverride);
       case 'fs:trash_list':
         return await _listTrash(driveOverride: driveOverride);
       case 'fs:restore':
@@ -563,24 +565,54 @@ class DriveManager {
   static Future<Map<String, dynamic>> _moveToTrash(String? itemPath, {String? driveOverride}) async {
     if (itemPath == null || itemPath.isEmpty) throw Exception('Path required');
     final source = await _getSafePath(itemPath, driveOverride: driveOverride);
-    final root = driveOverride ?? await _getRootPath();
-    final trashDir = _trashDir(root);
-    await Directory(trashDir).create(recursive: true);
+    
+    // Use PowerShell to move to the native Windows Recycle Bin
+    final result = await Process.run('powershell', [
+      '-Command',
+      "Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile('$source', 'OnlyErrorDialogs', 'SendToRecycleBin')"
+    ]);
 
-    final name = p.basename(source);
-    final stamp = DateTime.now().millisecondsSinceEpoch;
-    final dest = p.join(trashDir, '${name}__$stamp');
-
-    final stat = await FileStat.stat(source);
-    if (stat.type == FileSystemEntityType.directory) {
-      await Directory(source).rename(dest);
-    } else {
-      await File(source).rename(dest);
+    // If it's a directory, DeleteFile will fail, try DeleteDirectory
+    if (result.exitCode != 0) {
+      await Process.run('powershell', [
+        '-Command',
+        "Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory('$source', 'OnlyErrorDialogs', 'SendToRecycleBin')"
+      ]);
     }
 
-    final meta = {'original': source, 'name': name, 'stamp': stamp, 'is_dir': stat.type == FileSystemEntityType.directory};
-    await File('$dest.meta').writeAsString(jsonEncode(meta));
-    return {'success': true, 'trashPath': dest};
+    return {'success': true, 'nativeRecycleBin': true};
+  }
+
+  static Future<Map<String, dynamic>> _listFilesRecent({String? driveOverride}) async {
+    final root = await _getSafePath('', driveOverride: driveOverride);
+    final results = <Map<String, dynamic>>[];
+
+    Future<void> scan(String dirPath, int depth) async {
+      if (depth > 2 || results.length >= 50) return; // Superficial scan for performance
+      try {
+        final dir = Directory(dirPath);
+        await for (final entity in dir.list(followLinks: false)) {
+          try {
+            final name = p.basename(entity.path);
+            if (name.startsWith('.')) continue;
+            final stat = await entity.stat();
+            results.add({
+              'name': name,
+              'path': entity.path.replaceFirst(root, '').replaceAll('\\', '/'),
+              'is_dir': entity is Directory,
+              'size': entity is File ? stat.size : 0,
+              'modified': stat.modified.millisecondsSinceEpoch,
+            });
+            if (entity is Directory) await scan(entity.path, depth + 1);
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
+
+    await scan(root, 0);
+    // Sort by most recent
+    results.sort((a, b) => (b['modified'] as int).compareTo(a['modified'] as int));
+    return {'items': results.take(30).toList()};
   }
 
   static Future<Map<String, dynamic>> _listTrash({String? driveOverride}) async {
