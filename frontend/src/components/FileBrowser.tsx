@@ -49,7 +49,8 @@ const FileBrowser: React.FC = () => {
                 headers: { Authorization: `Bearer ${token}` },
                 params: { path: currentPath, drive: currentDrive }
             });
-            setFiles(res.data.files || []);
+            // FIX: Backend returns 'items', not 'files'
+            setFiles(res.data.items || []);
         } catch (err: any) {
             console.error('[FileBrowser] Fetch error:', err);
             setError(err.response?.data?.error || 'Vault connection refused');
@@ -75,7 +76,8 @@ const FileBrowser: React.FC = () => {
 
     const handleNavigate = (item: FileItem) => {
         if (item.is_dir) {
-            const newPath = item.path;
+            // FIX: Construct the new path by appending item.name to currentPath
+            const newPath = currentPath ? `${currentPath}/${item.name}` : item.name;
             const newDrive = item.drive || currentDrive;
             navigate(`?drive=${encodeURIComponent(newDrive)}&path=${encodeURIComponent(newPath)}`);
         }
