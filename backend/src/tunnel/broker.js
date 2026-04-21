@@ -17,8 +17,10 @@ class TunnelBroker {
     }
 
     // Add or update a drive for an agent (email is the key)
-    registerDrive(email, drive) {
-        const info = this.agentInfo.get(email) || { email: email, drives: [] };
+    registerDrive(email, rawDrive) {
+        if (!email) return;
+        const drive = rawDrive.replace(/[\\/]+$/, '').trim();
+        const info = this.agentInfo.get(email) || { email, agentId: null, online: false, drives: [] };
         const driveUpper = drive.toUpperCase();
         const existingIndex = info.drives.findIndex(d => d.drive.toUpperCase() === driveUpper);
         
@@ -41,7 +43,8 @@ class TunnelBroker {
     }
     
     // Set the active drive (emaul is the key)
-    setActiveDrive(email, drive) {
+    setActiveDrive(email, rawDrive) {
+        const drive = rawDrive.replace(/[\\/]+$/, '').trim();
         const info = this.agentInfo.get(email);
         if (info) {
             info.activeDrive = drive;
@@ -99,6 +102,14 @@ class TunnelBroker {
                 online: true,
                 lastSeen: new Date().toISOString(),
             });
+
+            // NEW: Auto-register active drive from headers (fixes sync after restart)
+            const rawActiveDrive = req.headers['x-active-drive'];
+            if (rawActiveDrive) {
+                const activeDrive = rawActiveDrive.replace(/[\\/]+$/, '').trim();
+                this.registerDrive(email, activeDrive);
+                console.log(`[DriveNet] Auto-registered drive from connection: ${email} → ${activeDrive}`);
+            }
 
             ws.on('message', (message) => {
                 let data;

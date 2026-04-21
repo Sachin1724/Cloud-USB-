@@ -25,10 +25,12 @@ class TunnelClient {
     if (_isConnected) return;
 
     final prefs = await SharedPreferences.getInstance();
-    // Always use the deployed cloud backend — this works from ANY network in the world
     final brokerBaseUrl = prefs.getString('broker_url') ?? 'https://cloud-usb.onrender.com';
     final cloudWsUrl = brokerBaseUrl.replaceAll('http://', 'ws://').replaceAll('https://', 'wss://');
     String agentId = prefs.getString('agent_id') ?? 'desktop-node-01';
+    
+    // NEW: Pass the selected drive in the connection headers to ensure sync after backend restarts
+    String activeDrive = (prefs.getString('selected_drive') ?? '').replaceAll('\\', '').trim();
 
     try {
       final wsUrl = Uri.parse(cloudWsUrl);
@@ -36,14 +38,15 @@ class TunnelClient {
         wsUrl.toString(),
         headers: {
           'x-agent-id': agentId,
+          'x-active-drive': activeDrive,
           'authorization': 'Bearer $token',
         },
       );
       
       _channel = IOWebSocketChannel(ws);
       _isConnected = true;
-      _reconnectAttempts = 0; // Reset on successful connect
-      debugPrint('[DriveNet Agent] Connected to Cloud Broker: $cloudWsUrl');
+      _reconnectAttempts = 0;
+      debugPrint('[DriveNet Agent] Connected. Serving Drive: $activeDrive');
 
       _channel!.stream.listen(
         (message) async {
@@ -60,9 +63,7 @@ class TunnelClient {
                     _channel?.sink.add(jsonEncode(response));
                   }
                 }
-                
                 final result = await DriveManager.handleFileRequest(action, payload, wsSend, requestId);
-                
                 if (result != null) {
                   wsSend({
                     'requestId': requestId,
@@ -71,10 +72,7 @@ class TunnelClient {
                 }
               } catch (err) {
                 if (_isConnected) {
-                  _channel?.sink.add(jsonEncode({
-                    'requestId': requestId,
-                    'error': err.toString(),
-                  }));
+                  _channel?.sink.add(jsonEncode({'requestId': requestId, 'error': err.toString()}));
                 }
               }
             }
@@ -82,31 +80,20 @@ class TunnelClient {
             debugPrint('[DriveNet Agent] Message parsing error: $err');
           }
         },
-        onDone: () {
-          debugPrint('[DriveNet Agent] Disconnected.');
-          _isConnected = false;
-          _scheduleReconnect(token);
-        },
-        onError: (err) {
-          debugPrint('[DriveNet Agent] WS Error: $err');
-          _isConnected = false;
-          _scheduleReconnect(token);
-        },
+        onDone: () { _isConnected = false; _scheduleReconnect(token); },
+        onError: (err) { _isConnected = false; _scheduleReconnect(token); },
       );
     } catch (e) {
-      debugPrint('[DriveNet Agent] Connection Failed: $e');
       _isConnected = false;
       _scheduleReconnect(token);
     }
   }
 
-  // Exponential backoff: 5s → 15s → 30s → 60s (max) to avoid hammering server
   static void _scheduleReconnect(String token) {
     if (!_shouldReconnect) return;
     _reconnectTimer?.cancel();
     _reconnectAttempts++;
     final seconds = [5, 15, 30, 60][(_reconnectAttempts - 1).clamp(0, 3)];
-    debugPrint('[DriveNet Agent] Reconnecting in ${seconds}s (attempt $_reconnectAttempts)...');
     _reconnectTimer = Timer(Duration(seconds: seconds), () {
       _connect(token);
     });
@@ -121,4 +108,3 @@ class TunnelClient {
     _isConnected = false;
   }
 }
-
